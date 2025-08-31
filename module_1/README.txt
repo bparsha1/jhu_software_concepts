@@ -1,5 +1,3 @@
-# module_1/README.txt
-
 ## Personal Portfolio Website (Module 1)
 
 This folder contains the source code for a personal portfolio website built with Python and the Flask web framework.
