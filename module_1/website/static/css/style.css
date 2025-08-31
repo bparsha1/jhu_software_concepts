@@ -1,0 +1,117 @@
+/* --- General Body Styling --- */
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    /* Background image generated with Gemini */
+    background-image: url('../images/hex_background.png');
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    background-color: #1a1a1a; 
+    color: #f0f0f0;
+}
+
+/* Used where needed to prevent whitespace defined in json from being squeezed */
+.preserve-whitespace {
+    white-space: pre-wrap;
+}
+
+/* Set padding around main content */
+main.content {
+    padding: 20px 50px;
+}
+
+/* --- Top bar navigation area --- */
+nav.topbar {
+    background-color: rgba(17, 17, 17, 0.95);
+    backdrop-filter: blur(10px);
+    overflow: hidden;
+    padding: 10px 50px;
+    border-bottom: 1px solid #333; 
+    text-align: right;
+}
+
+.topbar .nav-links {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+    display: inline-block;
+}
+
+.topbar .nav-links li {
+    float: left; 
+    margin-left: 20px;
+}
+
+.topbar .nav-links li a {
+    padding: 10px 15px;
+    text-decoration: none;
+    font-size: 18px;
+    color: #a7a7a7;
+    display: block;
+    transition: background-color 0.3s, color 0.3s;
+    border-radius: 5px;
+}
+
+.topbar .nav-links li a i {
+    margin-right: 8px;
+}
+
+.topbar .nav-links li a:hover {
+    background-color: #333; /* Darker gray on hover */
+    color: white;
+}
+
+.topbar .nav-links li a.active {
+    background-color: #555; /* Medium gray for active tab */
+    color: white;
+}
+
+
+/* --- Home page formatting --- */
+.home-container {
+    display: flex;
+    align-items: top;
+    gap: 40px;
+    margin-top: 30px;
+}
+
+.bio-text {
+    flex: 2;
+    background-color: rgba(0, 0, 0, 0.6);
+    padding: 25px;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3); 
+}
+
+.bio-image {
+    flex: 1;
+    text-align: center;
+}
+
+.bio-image img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3); 
+}
+
+
+/* --- Projects page formatting --- */
+.project-card, .contact-info {
+    background-color: rgba(0, 0, 0, 0.6);
+    padding: 25px;
+    margin-top: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
+}
+
+.project-card a, .contact-info a {
+    color: #007BFF;
+    text-decoration: none;
+}
+
+.project-card a:hover, .contact-info a:hover {
+    text-decoration: underline;
+}

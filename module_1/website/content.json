@@ -1,0 +1,19 @@
+{
+  "home": {
+    "name": "Burch Parshall",
+    "position": "Senior Principal Analyst",
+    "bio": "Burch Parshall is an analyst at Visionist Inc. specializing in digital signal processing.  He retired from the U.S. Army in 2023 where he held positions as an analyst, curriculum developer, instructor, and security manager.  He is a graduate of the Advanced Signals Analysis Course, and the Senior Leadership Course.  He holds a bachelors degree in Asian Studies from the University of Maryland Global Campus. \n\nHe started his journey programming with bash and c-shell on Unix workstations to make his life easier.  Since then he has written code in Python, C, C++, Java, Kotlin, Javascript, and Typescript."
+  },
+  "contact": {
+    "email": "bparsha1@jh.edu",
+    "linkedin_url": "None",
+    "linkedin_text": "I do not have a LinkedIn"
+  },
+  "projects": [
+    {
+      "title": "Module 1: Personal Portfolio Website",
+      "details": "This project is a personal portfolio website created using the Python Flask web framework.",
+      "github_link": "https://github.com/bparsha1/jhu_software_concepts"
+    }
+  ]
+}

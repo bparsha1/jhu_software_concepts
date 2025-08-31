@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+
+{% block title %}Contact Me{% endblock %}
+
+{% block content %}
+    <h1>Contact Information</h1>
+    <div class="contact-info">
+        <p><strong>Email:</strong> {{ content.email }}</p>
+        <p><strong>LinkedIn:</strong> <a href="{{ content.linkedin_url }}" target="_blank">{{ content.linkedin_text }}</a></p>
+    </div>
+{% endblock %}

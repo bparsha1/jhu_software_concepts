@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block title %}Home{% endblock %}
+
+{% block content %}
+    <h2>{{ content.name }}</h2>
+    <h3>{{ content.position }}</h3>
+    <div class="home-container">
+        <div class="bio-text">
+            {# These are now placeholders for your JSON data #}
+            <p class="preserve-whitespace">{{ content.bio }}</p>
+        </div>
+        <div class="bio-image">
+            <img src="{{ url_for('static', filename='images/profile_photo.png') }}" alt="Burch Parshall">
+        </div>
+    </div>
+{% endblock %}
