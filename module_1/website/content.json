@@ -14,6 +14,11 @@
       "title": "Module 1: Personal Portfolio Website",
       "details": "This project is a personal portfolio website created using the Python Flask web framework.",
       "github_link": "https://github.com/bparsha1/jhu_software_concepts"
+    },
+    {
+      "title": "Module 2: Web Scraping",
+      "details": "This project scrapes from thegradcafe.com, and converts the scraping to a clean json file with entires.  Then it augments it with corrections from an LLM.",
+      "github_link": "https://github.com/bparsha1/jhu_software_concepts"
     }
   ]
 }
