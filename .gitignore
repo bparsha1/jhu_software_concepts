@@ -12,5 +12,5 @@ module_3/venv
 module_3/models
 module_3/llm_hosting
 module_3/new_structured_entries.json
-module_3/new_structured_entries.jsonl
+module_3/new_structured_entries.json.jsonl
 module_3/__pycache__
