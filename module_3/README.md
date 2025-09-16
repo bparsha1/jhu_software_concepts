@@ -122,7 +122,7 @@ Now, use the interface to trigger the pipeline and re-acquire the data you just 
 
 1.  **Click the "Pull New Data" button.**
     * You will see an immediate confirmation message on the webpage.
-    * In the terminal where you launched `app.py`, you should see the pipeline's log messages start to appear (e.g., "--- STARTING HYBRID DATA PIPELINE ---", "Scraping page 1...").
+    * In the terminal where you launched `app.py`, you should see the pipeline's log messages start to appear (e.g., "--- STARTING PIPELINE ---", "Scraping page 1...").
 
 2.  **Wait for the process to complete.** This may take several minutes. The "Update Analysis" button will be disabled during this time. Once the pipeline finishes, the button will become clickable again.
 
