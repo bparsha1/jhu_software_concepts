@@ -8,7 +8,7 @@ from urllib.parse import urljoin
 BASE_URL = 'https://www.thegradcafe.com/'
 TARGET_URL = urljoin(BASE_URL, 'survey/index.php')
 USER_AGENT = 'Burch'
-TARGET_ENTRIES = 50000 
+TARGET_ENTRIES = 100000 
 OUTPUT_FILE = 'raw_html_data.json'
 
 def check_permission(target_url, user_agent):

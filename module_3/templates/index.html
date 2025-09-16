@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grad School Cafe Data Analysis</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header>
+        <h1>Grad School Cafe Data Analysis</h1>
+        <div class="buttons">
+            <button id="pullDataBtn" title="Scrape the latest entries from GradCafe and add them to the database. This process can take several minutes.">Pull New Data</button>
+            <button id="updateAnalysisBtn" title="Refresh the page to view the analysis with the latest data from the database.">Update Analysis</button>
+        </div>
+    </header>
+    
+    <main>
+        <h2>Analysis</h2>
+        <div id="statusMessage"></div>
+        
+        <div class="card">
+            <p class="question">1. How many entries do you have in your database who have applied for Fall 2025?</p>
+            <p class="answer">Answer: Applicant count: {{ results.q1[0] if results.q1 else 0 }}</p>
+        </div>
+
+        <div class="card">
+            <p class="question">2. What percentage of entries are from international students (not American or Other)?</p>
+            <p class="answer">Answer: Percent International: {{ results.q2[0] if results.q2 else '0.00' }}%</p>
+        </div>
+
+        <div class="card">
+            <p class="question">3. What is the average GPA, GRE, GRE V, GRE AW of applicants who provided these metrics?</p>
+            <p class="answer">Answer: 
+                Average GPA: {{ '%.2f'|format(results.q3[0]) if results.q3 and results.q3[0] else 'N/A' }},
+                Average GRE: {{ '%.2f'|format(results.q3[1]) if results.q3 and results.q3[1] else 'N/A' }},
+                Average GRE V: {{ '%.2f'|format(results.q3[2]) if results.q3 and results.q3[2] else 'N/A' }},
+                Average GRE AW: {{ '%.2f'|format(results.q3[3]) if results.q3 and results.q3[3] else 'N/A' }}
+            </p>
+        </div>
+
+        <div class="card">
+            <p class="question">4. What is the average GPA of American students in Fall 2025?</p>
+            <p class="answer">Answer: Average GPA American: {{ '%.2f'|format(results.q4[0]) if results.q4 and results.q4[0] else 'N/A' }}</p>
+        </div>
+
+        <div class="card">
+            <p class="question">5. What percent of entries for Fall 2025 are Acceptances?</p>
+            <p class="answer">Answer: Acceptance percent: {{ results.q5[0] if results.q5 and results.q5[0] else '0.00' }}%</p>
+        </div>
+        
+        <div class="card">
+            <p class="question">6. What is the average GPA of applicants who applied for Fall 2025 who are Acceptances?</p>
+            <p class="answer">Answer: Average GPA Acceptance: {{ '%.2f'|format(results.q6[0]) if results.q6 and results.q6[0] else 'N/A' }}</p>
+        </div>
+
+        <div class="card">
+            <p class="question">7. How many entries are from applicants who applied to JHU for a masters degrees in Computer Science?</p>
+            <p class="answer">Answer: JHU Masters CS count: {{ results.q7[0] if results.q7 else 0 }}</p>
+        </div>
+
+        <div class="card">
+            <p class="question">8. How many entries from 2025 are acceptances from applicants who applied to Georgetown University for a PhD in Computer Science?</p>
+            <p class="answer">Answer: Georgetown PhD CS Acceptances (2025): {{ results.q8[0] if results.q8 else 0 }}</p>
+        </div>
+
+        <div class="card">
+            <p class="question">9. What are the top 3 universities with the most applications?</p>
+            <p class="answer">Answer: 
+                <ul>
+                {% for uni, count in results.q9 %}
+                    <li>{{ uni }}: {{ count }} applications</li>
+                {% else %}
+                    <li>No data available.</li>
+                {% endfor %}
+                </ul>
+            </p>
+        </div>
+
+        <div class="card">
+            <p class="question">10. How does the average GPA differ between 'Accepted' and 'Rejected' applicants?</p>
+            <p class="answer">Answer: 
+                <ul>
+                {% for status, gpa in results.q10 %}
+                    <li>{{ status }}: {{ '%.2f'|format(gpa) }}</li>
+                {% else %}
+                    <li>No data available.</li>
+                {% endfor %}
+                </ul>
+            </p>
+        </div>
+
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const pullDataBtn = document.getElementById('pullDataBtn');
+            const updateAnalysisBtn = document.getElementById('updateAnalysisBtn');
+            const statusMessage = document.getElementById('statusMessage');
+            let isScraping = false;
+
+            // Function to check scraping status from the server
+            async function checkStatus() {
+                try {
+                    const response = await fetch('/status');
+                    const data = await response.json();
+                    isScraping = data.scraping_in_progress;
+                    updateAnalysisBtn.disabled = isScraping;
+                    if (isScraping) {
+                         updateAnalysisBtn.classList.add('disabled');
+                         updateAnalysisBtn.title = "Cannot update while data pull is in progress.";
+                    } else {
+                        updateAnalysisBtn.classList.remove('disabled');
+                        updateAnalysisBtn.title = "Refresh the page to view the analysis with the latest data from the database.";
+                    }
+                } catch (error) {
+                    console.error('Error checking status:', error);
+                }
+            }
+            
+            // Check status periodically
+            setInterval(checkStatus, 3000); // Check every 3 seconds
+            checkStatus(); // Initial check
+
+            // Event listener for "Pull New Data"
+            pullDataBtn.addEventListener('click', async () => {
+                statusMessage.textContent = 'Initiating data pull...';
+                statusMessage.className = 'message-info';
+                try {
+                    const response = await fetch('/pull-data', { method: 'POST' });
+                    const data = await response.json();
+                    if (response.ok) {
+                        statusMessage.textContent = data.message;
+                    } else {
+                        statusMessage.textContent = `Error: ${data.message}`;
+                        statusMessage.className = 'message-error';
+                    }
+                } catch (error) {
+                    statusMessage.textContent = 'Failed to start data pull process.';
+                    statusMessage.className = 'message-error';
+                }
+            });
+
+            // Event listener for "Update Analysis"
+            updateAnalysisBtn.addEventListener('click', () => {
+                if (!isScraping) {
+                    statusMessage.textContent = 'Refreshing analysis...';
+                    statusMessage.className = 'message-info';
+                    window.location.reload();
+                } else {
+                    alert('A data pull is currently in progress. Please wait for it to complete before updating.');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

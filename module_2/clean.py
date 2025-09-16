@@ -104,9 +104,9 @@ def clean_data(raw_html_dict):
             url = 'https://www.thegradcafe.com' + url_tag['href']
 
             applicant_entry = {
-                'university': school,
-                'program_name': program_name,
-                'degree_type': degree,
+            	'university': school,
+                'program': program_name, 
+                'Degree': degree,
                 'date_added': date_added,
                 'status': status,
                 'decision_date': decision_date,

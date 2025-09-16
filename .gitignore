@@ -1,3 +1,16 @@
 venv
 module_1/venv
 module_1/website/__pycache__/
+module_2/venv
+module_2/llm_hosting.zip
+module_2/llm_hosting
+module_2/raw_html_data.json
+module_2/applicant_data.json
+module_2/models
+module_2/llm_extend_applicant_data.json
+module_3/venv
+module_3/models
+module_3/llm_hosting
+module_3/new_structured_entries.json
+module_3/new_structured_entries.jsonl
+module_3/__pycache__
