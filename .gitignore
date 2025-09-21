@@ -14,3 +14,9 @@ module_3/llm_hosting
 module_3/new_structured_entries.json
 module_3/new_structured_entries.json.jsonl
 module_3/__pycache__
+module_4/venv
+module_4/src/models
+module_4/src/llm_hosting
+module_4/src/new_structured_entries.json
+module_4/src/new_structured_entries.json.jsonl
+module_4/src/__pycache__
