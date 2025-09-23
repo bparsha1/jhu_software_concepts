@@ -16,14 +16,17 @@ huggingface==0.0.1
 huggingface-hub==0.34.4
 idna==3.10
 imagesize==1.4.1
+iniconfig==2.1.0
 itsdangerous==2.2.0
 Jinja2==3.1.6
 llama_cpp_python==0.3.16
 MarkupSafe==3.0.2
 numpy==2.3.3
 packaging==25.0
+pluggy==1.6.0
 psycopg==3.2.10
 Pygments==2.19.2
+pytest==8.4.2
 PyYAML==6.0.2
 requests==2.32.5
 roman-numerals-py==3.1.0

@@ -1,98 +1,126 @@
-from flask import Flask, render_template, jsonify
+from flask import Flask, render_template, jsonify, redirect, url_for
 import psycopg
 import subprocess
-import query_data
-from scrape_and_clean import main as run_scrape_and_clean
-from load_new_data import main as run_data_loading
+from . import query_data
+from .scrape_and_clean import main as run_scrape_and_clean
+from .load_new_data import main as run_data_loading
 
 app = Flask(__name__)
-DB_CONN_STR = "dbname=grad_cafe user=postgres"
+
+# Use Flask's config system. This can be set during testing.
+app.config.from_mapping(
+    DATABASE_URI="dbname=grad_cafe user=postgres"
+)
+
 pipeline_in_progress = False
 
 def run_full_pipeline():
-    """
-    Runs the pipeline to scrape, clean, and load data, 
-    and skips if no new data is found.
-    """
+    """Runs the full data pipeline."""
     global pipeline_in_progress
     print("--- STARTING PIPELINE ---")
     
     try:
-        with psycopg.connect(DB_CONN_STR) as conn:
+        # Use the connection string from the app's config
+        conn_str = app.config['DATABASE_URI']
+        with psycopg.connect(conn_str) as conn:
             print("Pipeline: Database connection established.")
             
-            # Scrape new raw data and capture the return value.
             print("Step 1/3: Scraping new entries...")
             new_entries_count = run_scrape_and_clean(conn) 
             print(f"Scraping complete. Found {new_entries_count} new entries.")
 
-            # Only run the next steps if new entries were actually found
             if new_entries_count > 0:
-                # Clean the raw data with llm.
                 print("Step 2/3: Cleaning scraped data via subprocess...")
-                
-                # It was easier here to just accept the standard out
-                # from the llm, which is ifile.jsonl than to redirect
-                # stdout.
-                command_args = [
-                    "python", 
-                    "llm_hosting/app.py", 
-                    "--file", 
-                    "new_structured_entries.json"
-                ]
-
-                clean_process = subprocess.run(
-                    command_args, 
-                    capture_output=True, text=True, check=True
-                )
+                command_args = ["python", "src/llm_hosting/app.py", "--file", "new_structured_entries.json"]
+                subprocess.run(command_args, capture_output=True, text=True, check=True)
                 print("Cleaning complete.")
 
-                # Load the cleaned data.
                 print("Step 3/3: Loading data into database...")
                 run_data_loading(conn) 
                 conn.commit()
                 print("Data loading complete.")
             else:
                 print("Skipping LLM and data loading steps as no new entries were found.")
-
         print("--- DATA PIPELINE FINISHED SUCCESSFULLY ---")
 
-    # Setup warnings for debugging errors.
     except subprocess.CalledProcessError as e:
-        print("--- PIPELINE FAILED: Error during the LLM subprocess step. ---")
-        print(f"Return Code: {e.returncode}")
-        print(f"Stdout: {e.stdout}")
-        print(f"Stderr: {e.stderr}")
+        print(f"--- PIPELINE FAILED: Subprocess error: {e.stderr} ---")
     except Exception as e:
         print(f"An unexpected error occurred in the pipeline: {e}")
     finally:
         print("--- PIPELINE PROCESS HAS CONCLUDED ---")
-        # Flip the flag to false.
         pipeline_in_progress = False
 
 # --- Flask Routes ---
+
+
+# Root level redirects to analysis so we don't need
+# to have the user choose analysis.
 @app.route("/")
 def index():
+    """ Redirects to the analysis page. """
+    return redirect(url_for('analysis'))
+
+@app.route("/analysis")
+def analysis():
+    """Serves the main analysis page with data from the database."""
     try:
-        results = {
-            "q1": query_data.execute_query(query_data.q1), 
-            "q2": query_data.execute_query(query_data.q2),
-            "q3": query_data.execute_query(query_data.q3), 
-            "q4": query_data.execute_query(query_data.q4),
-            "q5": query_data.execute_query(query_data.q5), 
-            "q6": query_data.execute_query(query_data.q6),
-            "q7": query_data.execute_query(query_data.q7), 
-            "q8": query_data.execute_query(query_data.q8),
-            "q9": query_data.execute_query(query_data.q9, fetch="all"),
-            "q10": query_data.execute_query(query_data.q10, fetch="all")
-        }
+        conn_str = app.config['DATABASE_URI']
+        with psycopg.connect(conn_str) as conn:
+            results = {
+                "q1": query_data.execute_query(conn, query_data.q1),
+                "q2": query_data.execute_query(conn, query_data.q2),
+                "q3": query_data.execute_query(conn, query_data.q3),
+                "q4": query_data.execute_query(conn, query_data.q4),
+                "q5": query_data.execute_query(conn, query_data.q5),
+                "q6": query_data.execute_query(conn, query_data.q6),
+                "q7": query_data.execute_query(conn, query_data.q7),
+                "q8": query_data.execute_query(conn, query_data.q8),
+                "q9": query_data.execute_query(conn, query_data.q9, fetch="all"),
+                "q10": query_data.execute_query(conn, query_data.q10, fetch="all")
+            }
         return render_template("index.html", results=results)
     except Exception as e:
         print(f"Error during page load query: {e}")
-        return "Error loading data from the database. Please try again in a moment.", 500
+        return "Error loading data from the database.", 500
+
+@app.route("/update-analysis", methods=['GET', 'POST'])
+def update_analysis():
+    """
+    Re-runs the database queries and returns the results as JSON.
+    This is called by JavaScript to refresh the page content.
+    """
+    if pipeline_in_progress:
+        return jsonify({
+            "error": "A data pull is in progress. Please wait."
+        }), 409 # Return 409 Conflict
+    try:
+        conn_str = app.config['DATABASE_URI']
+        with psycopg.connect(conn_str) as conn:
+            results = {
+                "q1": query_data.execute_query(conn, query_data.q1),
+                "q2": query_data.execute_query(conn, query_data.q2),
+                "q3": query_data.execute_query(conn, query_data.q3),
+                "q4": query_data.execute_query(conn, query_data.q4),
+                "q5": query_data.execute_query(conn, query_data.q5),
+                "q6": query_data.execute_query(conn, query_data.q6),
+                "q7": query_data.execute_query(conn, query_data.q7),
+                "q8": query_data.execute_query(conn, query_data.q8),
+                "q9": query_data.execute_query(conn, query_data.q9, fetch="all"),
+                "q10": query_data.execute_query(conn, query_data.q10, fetch="all")
+            }
+        # Instead of rendering a template, we return the data as JSON
+        return jsonify(results)
+    except Exception as e:
+        print(f"Error during analysis update query: {e}")
+        return jsonify({"error": "Error loading data from the database."}), 500
+
 
 @app.route("/pull-data", methods=["POST"])
 def pull_data():
+    """ 
+    This runs the pipeline to pull down any new data. 
+    """
     global pipeline_in_progress
     if pipeline_in_progress:
         return jsonify({"status": "error", "message": "A data pull is already in progress."}), 409
@@ -103,7 +131,11 @@ def pull_data():
 
 @app.route("/status")
 def status():
+    """
+    This lets you know if the pipeline is currently running.
+    """
     return jsonify({"pipeline_in_progress": pipeline_in_progress})
 
-if __name__ == "__main__":
+
+if __name__ == "__main__": # pragma: no cover
     app.run(debug=True)

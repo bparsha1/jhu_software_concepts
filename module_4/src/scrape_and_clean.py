@@ -17,9 +17,12 @@ DB_CONN_STR = "dbname=grad_cafe user=postgres"
 
 # --- Main Entry Point for the Pipeline ---
 def main(conn):
-    """ Scrapes the latest data, or starts from Jan 2020."""
+    """ 
+    Scrapes the latest data, or starts from Jan 2020.
+    """
     print("--- Starting Scrape & Clean Step ---")
 
+    # Check for robots.txt rules.
     rp = RobotFileParser()
     rp.set_url(ROBOTS_URL)
     rp.read()
@@ -29,6 +32,7 @@ def main(conn):
 
     latest_date, pids_on_latest_date = get_latest_day_info(conn)
     
+    # Set a default latest date, currently gives about 44k records.
     if not latest_date:
         latest_date = date(2020, 1, 1)
         print(f"No existing data found. Starting initial scrape from {latest_date}.")
@@ -46,7 +50,9 @@ def main(conn):
         return 0
 
 def get_latest_day_info(conn):
-    """ This was added to get the latest date from the database and all PIDs from that date."""
+    """ 
+    This was added to get the latest date from the database and all PIDs from that date.
+    """
     try:
         with conn.cursor() as cur:
             cur.execute("SELECT MAX(date_added) FROM applicants;")
@@ -65,8 +71,10 @@ def get_latest_day_info(conn):
         print(f"Database error while fetching latest day info: {e}")
         return None, set()
 
-def scrape_and_clean(latest_db_date=None, pids_on_latest_date=None, page_limit=5000):
-    """ This function does the scraping and formatting"""
+def scrape_and_clean(latest_db_date=None, pids_on_latest_date=None, page_limit=100):
+    """ 
+    This function does the scraping and formatting.
+    """
     if pids_on_latest_date is None:
         pids_on_latest_date = set()
 
@@ -74,6 +82,7 @@ def scrape_and_clean(latest_db_date=None, pids_on_latest_date=None, page_limit=5
     new_entries = []
     stop_scraping = False
     
+    # Goes out to the page limit, the default is 100.
     for page_num in range(1, page_limit + 1):
         if stop_scraping: break
         
@@ -88,6 +97,7 @@ def scrape_and_clean(latest_db_date=None, pids_on_latest_date=None, page_limit=5
             print(f"Network error while fetching page {page_num}: {e}")
             break
 
+        # Parse out the page to get just the data in the table.
         soup = BeautifulSoup(response.data, 'html.parser')
         tbody = soup.find('tbody')
         if not tbody:
@@ -104,6 +114,7 @@ def scrape_and_clean(latest_db_date=None, pids_on_latest_date=None, page_limit=5
         page_date_strings = [row.find_all('td')[2].get_text(strip=True) for row in main_rows]
         corrected_dates = infer_years(page_date_strings)
 
+        # Look at the dates to make sure we are only adding new data.
         for i, row in enumerate(main_rows):
             date_added_str = corrected_dates[i]
             if not date_added_str: continue
@@ -161,55 +172,77 @@ def infer_years(date_strings: list[str]) -> list[str]:
     """ I noticed sometimes the date existed without the year.
         This function was added to check entries before and after
         to determine what to put for the year since the entries
-        are chronological."""
+        are chronological.
+    """
     
     parsed_dates = []
     formats_with_year = ['%d %b %y', '%d %b %Y', '%B %d, %Y']
     format_no_year = '%d %b'
+    
     for s in date_strings:
         date_obj = None
         for fmt in formats_with_year:
-            try: date_obj = datetime.strptime(s, fmt); break
-            except (ValueError, TypeError): continue
+            try:
+                date_obj = datetime.strptime(s, fmt)
+                break
+            except (ValueError, TypeError):
+                continue
+        
         if date_obj:
             parsed_dates.append({'date': date_obj, 'inferred': False})
         else:
             try:
-                no_year_obj = datetime.strptime(s, format_no_year).replace(year=1900)
+                # FIX: Combine the string with a dummy leap year (2000) BEFORE parsing
+                full_date_str = f"{s} 2000"
+                date_with_dummy_year = datetime.strptime(full_date_str, f"{format_no_year} %Y")
+                
+                # Now replace the dummy year with the placeholder year for later logic
+                no_year_obj = date_with_dummy_year.replace(year=1900)
                 parsed_dates.append({'date': no_year_obj, 'inferred': True})
             except (ValueError, TypeError):
                 parsed_dates.append({'date': None, 'inferred': False})
+
     # Forward Pass
     last_known_year = None
     for i in range(len(parsed_dates)):
         if not parsed_dates[i]['date']: continue
-        if not parsed_dates[i]['inferred']: last_known_year = parsed_dates[i]['date'].year
+        if not parsed_dates[i]['inferred']:
+            last_known_year = parsed_dates[i]['date'].year
         elif last_known_year:
             temp_date = parsed_dates[i]['date'].replace(year=last_known_year)
             if i > 0 and parsed_dates[i-1]['date'] and temp_date < parsed_dates[i-1]['date']:
                 last_known_year += 1
-            parsed_dates[i]['date'] = parsed_dates[i]['date'].replace(year=last_known_year); parsed_dates[i]['inferred'] = False
+            parsed_dates[i]['date'] = parsed_dates[i]['date'].replace(year=last_known_year)
+            parsed_dates[i]['inferred'] = False
+            
     # Backward Pass
     next_known_year = None
     for i in range(len(parsed_dates) - 1, -1, -1):
         if not parsed_dates[i]['date']: continue
-        if not parsed_dates[i]['inferred']: next_known_year = parsed_dates[i]['date'].year
+        if not parsed_dates[i]['inferred']:
+            next_known_year = parsed_dates[i]['date'].year
         elif next_known_year:
             temp_date = parsed_dates[i]['date'].replace(year=next_known_year)
             if i + 1 < len(parsed_dates) and parsed_dates[i+1]['date'] and temp_date > parsed_dates[i+1]['date']:
                 next_known_year -= 1
-            parsed_dates[i]['date'] = parsed_dates[i]['date'].replace(year=next_known_year); parsed_dates[i]['inferred'] = False
+            parsed_dates[i]['date'] = parsed_dates[i]['date'].replace(year=next_known_year)
+            parsed_dates[i]['inferred'] = False
+            
     # Format results
     results = []
     for item in parsed_dates:
         if item['date']:
-            if item['inferred']: item['date'] = item['date'].replace(year=datetime.now().year)
+            if item['inferred']:
+                item['date'] = item['date'].replace(year=datetime.now().year)
             results.append(item['date'].strftime('%Y-%m-%d'))
-        else: results.append(None)
+        else:
+            results.append(None)
     return results
 
 def parse_status_and_date(tag):
-    """ This function breaks out the decision date and the status."""
+    """ 
+    This function breaks out the decision date and the status.
+    """
 
     text = tag.get_text(strip=True)
     status, decision_date_str = 'Other', None
@@ -223,17 +256,28 @@ def parse_status_and_date(tag):
 
 def format_decision_date(date_str, reference_year):
     """ This function formats the decision date."""
+    if not date_str or not reference_year:
+        return None
 
-    if not date_str or not reference_year: return None
+    # First, try formats that might already include a year
     formats_to_try = ['%d %b %y', '%d %b %Y']
     for fmt in formats_to_try:
-        try: return datetime.strptime(date_str, fmt).strftime('%Y-%m-%d')
-        except ValueError: continue
+        try:
+            return datetime.strptime(date_str, fmt).strftime('%Y-%m-%d')
+        except ValueError:
+            continue
+
+    # If the above fail, combine the string and year BEFORE parsing
     try:
-        return datetime.strptime(date_str, '%d %b').replace(year=reference_year).strftime('%Y-%m-%d')
-    except ValueError: return None
+        full_date_str = f"{date_str} {reference_year}"
+        return datetime.strptime(full_date_str, '%d %b %Y').strftime('%Y-%m-%d')
+    except ValueError:
+        return None
 
 def parse_details_from_badges(row):
+    """
+    Break the details out of the badges.
+    """
     details = {'gpa': None, 'gre': None, 'gre_v': None, 'gre_aw': None, 'student_type': None, 'semester_and_year': None}
     if not row: return details
     badges = row.find_all('div', class_=re.compile(r'tw-inline-flex'))
@@ -257,7 +301,8 @@ def parse_details_from_badges(row):
             details['semester_and_year'] = text
     return details
 
-if __name__ == '__main__':
+# This function underlying is tested but __main__ can't be tested with pytest.
+if __name__ == "__main__": # pragma: no cover
     print("Running scrape_and_clean.py as a standalone script...")
     with psycopg.connect(DB_CONN_STR) as connection:
         main(connection)

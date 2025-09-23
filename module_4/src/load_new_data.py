@@ -1,8 +1,8 @@
 import json
 import psycopg
 
-# Input from the LLM output
-INPUT_FILE = 'new_structured_entries.json.jsonl' # Corrected based on your app.py logic
+# Input from the LLM output.
+INPUT_FILE = 'new_structured_entries.json.jsonl'
 
 def main(conn):
     """
@@ -19,7 +19,7 @@ def main(conn):
                     # Skip any blank lines.
                     if not line.strip():
                         continue
-                    # Parse each line as its own JSON object
+                    # Parse each line as its own JSON object.
                     entry = json.loads(line)
                     data.append(entry)
                 except json.JSONDecodeError:
@@ -27,13 +27,12 @@ def main(conn):
     except FileNotFoundError:
         print(f"Error: Input file '{INPUT_FILE}' not found. Did the LLM script run correctly?")
         return
-    # --- END MODIFIED SECTION ---
 
     if not data:
         print("No new data to load.")
         return
 
-    # Uses the connection passed in from app.py
+    # Uses the connection passed in from app.py.
     with conn.cursor() as cur:
         insert_query = """
             INSERT INTO applicants (
@@ -49,37 +48,37 @@ def main(conn):
             llm_uni = entry.get('llm-generated-university', '')
             llm_prog = entry.get('llm-generated-program', '')
 
-            # Build the record tuple in the specified order
+            # Build the record tuple in the specified order.
             record = (
                 entry.get('pid'),
-                f"{llm_uni}, {llm_prog}", # The combined field for the 'program' column
+                f"{llm_uni}, {llm_prog}", # The combined field for the 'program' column.
                 entry.get('comments'),
                 entry.get('date_added'),
                 entry.get('url'),
                 entry.get('status'),
-                entry.get('semester_and_year'),
-                entry.get('student_type'),
+                entry.get('term'),
+                entry.get('us_or_international'),
                 entry.get('gpa'),
                 entry.get('gre'),
                 entry.get('gre_v'),
                 entry.get('gre_aw'),
                 entry.get('degree'),
-                llm_prog,  # Separate LLM-generated program
-                llm_uni    # Separate LLM-generated university
+                llm_prog,  # Separate LLM-generated program.
+                llm_uni    # Separate LLM-generated university.
             )
             cur.execute(insert_query, record)
-            # Check if a row was actually inserted
+            # Check if a row was actually inserted.
             insert_count += cur.rowcount
 
     print(f"Successfully inserted {insert_count} new entries out of {len(data)} total.")
     print("--- Finished Load Data Step ---")
 
 
-# Main for testing.
-if __name__ == '__main__':
+# This function underlying is tested but __main__ can't be tested with pytest.
+if __name__ == "__main__": # pragma: no cover
     DB_CONN_STR = "dbname=grad_cafe user=postgres"
     print("Running load_new_data.py as a standalone script...")
     with psycopg.connect(DB_CONN_STR) as connection:
         main(connection)
-        connection.commit() # Save changes when run standalone
+        connection.commit() # Save changes when run standalone.
     print("Standalone run complete.")
