@@ -1,3 +1,4 @@
+import os
 import psycopg
 import pytest
 import json
@@ -41,6 +42,18 @@ def create_fake_jsonl_file(tmp_path, data):
         for item in data:
             f.write(json.dumps(item) + '\n')
     return str(jsonl_file)
+
+
+def get_connection_string():
+    """Get the appropriate connection string based on the environment.
+    
+    :returns: Connection string for test database.
+    :rtype: str
+    """
+    if os.getenv('GITHUB_ACTIONS'):
+        return "dbname=test_grad_cafe user=postgres password=postgres host=localhost port=5432"
+    else:
+        return "dbname=test_grad_cafe user=postgres"
 
 
 @pytest.mark.db
@@ -210,8 +223,9 @@ def test_load_initial_data_success(db_session, tmp_path):
         for item in FAKE_ENTRY_DATA:
             f.write(json.dumps(item) + '\n')
     
-    # Call the function with the path to our fake file and a real test DB connection.
-    load_initial_json_data(str(test_file), db_session.info.dsn)
+    # Use environment-appropriate connection string
+    conn_str = get_connection_string()
+    load_initial_json_data(str(test_file), conn_str)
 
     # Check that the data was inserted into the database.
     with db_session.cursor() as cur:
@@ -271,8 +285,9 @@ def test_load_initial_data_with_empty_file(db_session, tmp_path, capsys):
     empty_file = tmp_path / "empty.jsonl"
     empty_file.touch() # Creates a 0-byte file
 
-    # Call the function with the empty file.
-    load_initial_json_data(str(empty_file), db_session.info.dsn)
+    # Use environment-appropriate connection string
+    conn_str = get_connection_string()
+    load_initial_json_data(str(empty_file), conn_str)
 
     # Check that the database is still empty.
     with db_session.cursor() as cur:
