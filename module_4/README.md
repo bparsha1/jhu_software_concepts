@@ -81,7 +81,7 @@ If you have llm-corrected data, you can skip step 1 and 2, and perform step 3.  
 
 Start the Flask web server by running `app.py` without any arguments.
 ```bash
-python app.py
+python -m src.app
 ```
 
 Open your web browser and navigate to http://127.0.0.1:5000 to see the analysis page.
@@ -134,3 +134,10 @@ Now, use the interface to trigger the pipeline and re-acquire the data you just 
 Finally, confirm that the data was successfully re-added to your database.
 
 **Check the application count on the webpage.** The "Applicant count" for the current year should now reflect the newly added data.
+
+# Automated testing of all code:
+
+Run the command:
+```bash
+pytest -m "web or buttons or analysis or db or integration"
+```
