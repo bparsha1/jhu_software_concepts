@@ -20,3 +20,4 @@ module_4/src/llm_hosting
 module_4/src/new_structured_entries.json
 module_4/src/new_structured_entries.json.jsonl
 module_4/src/__pycache__
+module_4/tests/__pycache__
