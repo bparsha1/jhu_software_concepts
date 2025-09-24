@@ -6,6 +6,7 @@ bs4==0.0.2
 certifi==2025.8.3
 charset-normalizer==3.4.3
 click==8.2.1
+coverage==7.10.6
 diskcache==5.6.3
 docutils==0.21.2
 filelock==3.19.1
@@ -23,13 +24,17 @@ llama_cpp_python==0.3.16
 MarkupSafe==3.0.2
 numpy==2.3.3
 packaging==25.0
+pip-autoremove==0.10.0
 pluggy==1.6.0
 psycopg==3.2.10
 Pygments==2.19.2
 pytest==8.4.2
+pytest-cov==7.0.0
+pytest-mock==3.15.1
 PyYAML==6.0.2
 requests==2.32.5
 roman-numerals-py==3.1.0
+setuptools==80.9.0
 snowballstemmer==3.0.1
 soupsieve==2.8
 Sphinx==8.2.3
