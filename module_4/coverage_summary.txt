@@ -1,0 +1,16 @@
+.........................................................                [100%]
+================================ tests coverage ================================
+_______________ coverage: platform linux, python 3.13.7-final-0 ________________
+
+Name                      Stmts   Miss  Cover   Missing
+-------------------------------------------------------
+src/__init__.py               0      0   100%
+src/app.py                   70      0   100%
+src/load_data.py             36      0   100%
+src/load_new_data.py         33      0   100%
+src/query_data.py            39      0   100%
+src/scrape_and_clean.py     209      0   100%
+-------------------------------------------------------
+TOTAL                       387      0   100%
+Required test coverage of 100% reached. Total coverage: 100.00%
+57 passed in 0.72s
