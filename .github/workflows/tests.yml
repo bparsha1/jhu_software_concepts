@@ -60,6 +60,7 @@ jobs:
         echo "FLASK_ENV=testing" >> $GITHUB_ENV
         echo "POSTGRES_HOST=localhost" >> $GITHUB_ENV
         echo "POSTGRES_USER=postgres" >> $GITHUB_ENV
+        echo "POSTGRES_PASSWORD=postgres" >> $GITHUB_ENV
 
     # Run the test suite
     - name: Run tests with pytest

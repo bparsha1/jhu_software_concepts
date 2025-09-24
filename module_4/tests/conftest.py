@@ -1,3 +1,4 @@
+import os
 import pytest
 import psycopg
 from src.app import app as flask_app
@@ -17,9 +18,17 @@ def test_db():
     :yields: The connection string for the newly created test database.
     :rtype: str
     """
-    default_conn_str = "dbname=postgres user=postgres"
-    test_db_name = "test_grad_cafe"
-    test_conn_str = f"dbname={test_db_name} user=postgres"
+    # Detect if running in GitHub Actions and adjust connection parameters
+    if os.getenv('GITHUB_ACTIONS'):
+        # GitHub Actions environment - connect via TCP to containerized PostgreSQL
+        default_conn_str = "dbname=postgres user=postgres password=postgres host=localhost port=5432"
+        test_db_name = "test_grad_cafe"
+        test_conn_str = f"dbname={test_db_name} user=postgres password=postgres host=localhost port=5432"
+    else:
+        # Local environment - use Unix socket connection
+        default_conn_str = "dbname=postgres user=postgres"
+        test_db_name = "test_grad_cafe"
+        test_conn_str = f"dbname={test_db_name} user=postgres"
 
     with psycopg.connect(default_conn_str, autocommit=True) as conn:
         print(f"\n--- Dropping old test database '{test_db_name}' (if exists) ---")
@@ -157,11 +166,12 @@ def db_with_data(db_session):
 
 @pytest.fixture(autouse=True)
 def reset_pipeline_flag():
-    """Reset the global `pipeline_in_progress` flag before each test.
+    """Reset the global pipeline_in_progress flag before each test.
 
-    This is an `autouse` fixture, meaning it is automatically applied to
+    This is an autouse fixture, meaning it is automatically applied to
     every test function. It ensures that the pipeline status is reset to a
-    known state (False) before a test begins, preventing state leakage.
+    known state (False) before a test begins, preventing state leakage
+    between tests.
     """
     from src import app
     app.pipeline_in_progress = False
