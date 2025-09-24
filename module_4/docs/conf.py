@@ -16,9 +16,9 @@ sys.path.insert(0, os.path.abspath('../src'))
 
 # -- Project information -----------------------------------------------------
 
-project = 'Graduate School Application Analysis System'
-copyright = '2025, Your Name'
-author = 'Your Name'
+project = 'Grad School Cafe Data Analysis'
+copyright = '2025, Burch Parshall'
+author = 'Burch Parshall'
 release = '1.0.0'
 version = '1.0.0'
 
