@@ -1,5 +1,6 @@
 import pytest
 from bs4 import BeautifulSoup
+from datetime import datetime
 from src import query_data # Import the query objects
 from src.scrape_and_clean import (
     infer_years,
@@ -11,8 +12,22 @@ from src.scrape_and_clean import (
 
 @pytest.mark.analysis
 def test_analysis_labels_and_rounding(client, mocker, db_session):
-    """
-    Tests that analysis is correctly labeled and percentages are formatted.
+    """Test the /analysis endpoint for correct data presentation.
+
+    This test mocks the database query execution to return predefined results.
+    It then sends a GET request to the '/analysis' route and checks the
+    response to ensure that:
+    1.  The page loads successfully.
+    2.  Numerical data (like percentages and averages) is correctly rounded
+        and formatted in the rendered HTML.
+    3.  Labels and text are displayed as expected.
+
+    :param client: The Flask test client fixture.
+    :type client: flask.testing.FlaskClient
+    :param mocker: The pytest-mock fixture for mocking objects.
+    :type mocker: pytest_mock.MockerFixture
+    :param db_session: The database session fixture (unused but required for context).
+    :type db_session: psycopg.Connection
     """
     mock_results = {
         query_data.q2: (18.756,),
@@ -44,8 +59,11 @@ def test_analysis_labels_and_rounding(client, mocker, db_session):
 
 @pytest.mark.analysis
 def test_parse_details_from_badges():
-    """ 
-    Tests parsing the details from badges.
+    """Test parsing of applicant details from HTML badge elements.
+
+    This test verifies that the ``parse_details_from_badges`` function
+    can correctly extract structured data (GPA, GRE scores, student type,
+    and semester) from a given HTML snippet representing a table row.
     """
     html = """
     <tr><td>
@@ -76,8 +94,19 @@ def test_parse_details_from_badges():
     ("Invalid Date", 2024, None),
 ])
 def test_format_decision_date(date_str, ref_year, expected):
-    """
-    This tests the date format logic.
+    """Test the formatting of decision date strings.
+
+    This parametrized test checks the ``format_decision_date`` function with
+    various inputs to ensure it correctly converts them to 'YYYY-MM-DD' format.
+    It covers cases with full dates, dates missing a year (which should use
+    the reference year), and invalid or None inputs.
+
+    :param date_str: The raw date string to be formatted.
+    :type date_str: str or None
+    :param ref_year: The reference year to use if the date string lacks one.
+    :type ref_year: int
+    :param expected: The expected output string in 'YYYY-MM-DD' format, or None.
+    :type expected: str or None
     """
     assert format_decision_date(date_str, ref_year) == expected
 
@@ -91,8 +120,18 @@ def test_format_decision_date(date_str, ref_year, expected):
     ("<td>Other</td>", "Other", None)
 ])
 def test_parse_status_and_date(html_input, expected_status, expected_date):
-    """
-    This tests the date and status parsing.
+    """Test parsing of application status and date from HTML.
+
+    This parametrized test verifies that the ``parse_status_and_date``
+    function can correctly extract the decision status and the raw date
+    string from various HTML ``<td>`` tag contents.
+
+    :param html_input: The HTML snippet containing the status and date.
+    :type html_input: str
+    :param expected_status: The expected application status string.
+    :type expected_status: str
+    :param expected_date: The expected raw date string, or None if not present.
+    :type expected_date: str or None
     """
     soup = BeautifulSoup(html_input, 'html.parser')
     tag = soup.find('td')
@@ -103,9 +142,11 @@ def test_parse_status_and_date(html_input, expected_status, expected_date):
 
 @pytest.mark.analysis
 def test_infer_years_cross_year():
-    """
-    Test to make sure the year is correctly decided when the year
-    prior is different than the year after.
+    """Test year inference for dates spanning a new year.
+
+    This test checks that ``infer_years`` correctly assigns the year to
+    dates without one when the sequence of dates crosses from one year
+    to the next (e.g., from December to January).
     """
     dates = ["30 Dec 23", "02 Jan", "05 Jan 24"]
     expected = ["2023-12-30", "2024-01-02", "2024-01-05"]
@@ -114,12 +155,13 @@ def test_infer_years_cross_year():
 
 @pytest.mark.analysis
 def test_infer_years_all_inferred():
-    """
-    This checks that the date logic is followed.
+    """Test year inference when no date has an explicit year.
+
+    This test ensures that ``infer_years`` defaults to the current year
+    when processing a list of dates where none of the strings contain a year.
     """
     dates = ["01 Jan", "02 Jan"]
     # If no year is provided, it should default to the current year
-    from datetime import datetime
     current_year = datetime.now().year
     expected = [f"{current_year}-01-01", f"{current_year}-01-02"]
     assert infer_years(dates) == expected
@@ -133,8 +175,14 @@ def test_infer_years_all_inferred():
     "99 Zzz 9999"
 ])
 def test_infer_years_handles_unparseable_string(bad_input):
-    """
-    Tests that an unparseable date string results in None in the final output.
+    """Test that `infer_years` handles unparseable date strings gracefully.
+
+    This parametrized test verifies that when the ``infer_years`` function
+    encounters a string that cannot be parsed as a date, it returns ``None``
+    in that position in the output list instead of raising an error.
+
+    :param bad_input: An unparseable or invalid date string.
+    :type bad_input: str or None
     """
     # A list containing a valid date and the bad input.
     input_dates = ["01 Jan 2025", bad_input]
@@ -148,10 +196,12 @@ def test_infer_years_handles_unparseable_string(bad_input):
 
 @pytest.mark.analysis
 def test_infer_years_backward_pass_corrects_year():
-    """
-    Tests the "backward pass" logic in infer_years. It should correctly
-    infer that a date like '31 Dec' that comes before '01 Jan 2025'
-    must belong to the previous year (2024).
+    """Test the backward pass logic for year correction in `infer_years`.
+
+    This test specifically targets the "backward pass" feature of the
+    ``infer_years`` function. It ensures that a date like '31 Dec' that
+    appears chronologically before '01 Jan 2025' is correctly assigned
+    to the previous year (2024), even though it was processed first.
     """
     # A list of dates spanning a year change.
     input_dates = ["31 Dec", "01 Jan 2025"]
@@ -162,4 +212,3 @@ def test_infer_years_backward_pass_corrects_year():
     # The backward pass should have corrected the year of the first date.
     expected_output = ['2024-12-31', '2025-01-01']
     assert result == expected_output
-

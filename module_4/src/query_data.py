@@ -120,8 +120,20 @@ q10 = """
 """
 
 def execute_query(conn, query, fetch="one"):
-    """
-    Executes a SQL query on a given connection and returns the result.
+    """Execute a SQL query on the given database connection and return results.
+    
+    This function provides a standardized interface for executing SQL queries
+    against the database. It handles cursor management and supports both
+    single-row and multi-row result fetching based on the fetch parameter.
+    
+    :param conn: Database connection object for executing the query.
+    :type conn: psycopg.Connection
+    :param query: SQL query string to execute.
+    :type query: str
+    :param fetch: Result fetch mode - "one" for single row, "all" for multiple rows.
+    :type fetch: str
+    :returns: Query result as tuple (for "one") or list of tuples (for "all").
+    :rtype: tuple or list[tuple]
     """
     with conn.cursor() as cur:
         cur.execute(query)
@@ -131,8 +143,19 @@ def execute_query(conn, query, fetch="one"):
             return cur.fetchall()
 
 def run_all_queries_for_console(conn):
-    """
-    Runs all assigned queries and prints the results to the console.
+    """Execute all predefined analysis queries and print formatted results to console.
+    
+    This function runs a comprehensive set of graduate school application analysis
+    queries and formats the output for console display. It covers various statistics
+    including application counts, acceptance rates, GPA averages, international
+    student percentages, and university-specific metrics.
+    
+    The queries analyze data across different dimensions such as application status,
+    student demographics, academic metrics (GPA, GRE scores), and specific programs
+    or universities of interest.
+    
+    :param conn: Database connection object for executing queries.
+    :type conn: psycopg.Connection
     """
     print("--- Running Grad Cafe Data Analysis Queries ---")
 

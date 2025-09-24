@@ -5,9 +5,19 @@ import psycopg
 INPUT_FILE = 'new_structured_entries.json.jsonl'
 
 def main(conn):
-    """
-    Loads cleaned data from the LLM's output file into the database
-    using the provided connection. This is the function app.py imports.
+    """Load cleaned data from LLM output file into the database.
+    
+    This function serves as the main entry point for loading processed applicant
+    data from the LLM-generated JSONL file into the database. It handles file
+    reading, JSON parsing, error handling for malformed data, and database
+    insertion with conflict resolution.
+    
+    The function reads the JSONL file line by line, parsing each entry and
+    inserting it into the applicants table. It uses ON CONFLICT (pid) DO NOTHING
+    to handle duplicate entries gracefully, ensuring idempotent operation.
+    
+    :param conn: Database connection object for inserting the loaded data.
+    :type conn: psycopg.Connection
     """
     print("--- Starting Load Data Step ---")
 

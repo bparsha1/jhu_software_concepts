@@ -15,7 +15,21 @@ app.config.from_mapping(
 pipeline_in_progress = False
 
 def run_full_pipeline():
-    """Runs the full data pipeline."""
+    """Execute the complete data processing pipeline from scraping to database loading.
+    
+    This function orchestrates the entire data pipeline process, including scraping
+    new entries, processing them through the LLM for data cleaning and standardization,
+    and loading the results into the database. It manages the global pipeline state
+    and provides comprehensive error handling for each pipeline stage.
+    
+    The pipeline consists of three main steps:
+    1. Scraping new entries from the target website
+    2. Processing scraped data through LLM for cleaning (only if new entries found)
+    3. Loading processed data into the database (only if new entries found)
+    
+    The function uses the database connection string from Flask app configuration
+    and handles subprocess execution for the LLM processing step.
+    """
     global pipeline_in_progress
     print("--- STARTING PIPELINE ---")
     
@@ -58,12 +72,32 @@ def run_full_pipeline():
 # to have the user choose analysis.
 @app.route("/")
 def index():
-    """ Redirects to the analysis page. """
+    """Redirect root URL to the analysis page.
+    
+    This route provides a convenient redirect from the root URL to the main
+    analysis page, eliminating the need for users to manually navigate to
+    the analysis interface.
+    
+    :returns: Flask redirect response to the analysis route.
+    :rtype: werkzeug.wrappers.Response
+    """
     return redirect(url_for('analysis'))
 
 @app.route("/analysis")
 def analysis():
-    """Serves the main analysis page with data from the database."""
+    """Serve the main analysis page with current database query results.
+    
+    This route executes all predefined analysis queries against the database
+    and renders the main analysis page template with the results. It provides
+    the primary interface for viewing graduate school application analytics.
+    
+    The function executes all 10 analysis queries (q1-q10) and passes the
+    results to the template for rendering. It includes error handling for
+    database connection issues and query execution problems.
+    
+    :returns: Rendered HTML template with query results or error message with 500 status.
+    :rtype: str or tuple[str, int]
+    """
     try:
         conn_str = app.config['DATABASE_URI']
         with psycopg.connect(conn_str) as conn:
@@ -86,9 +120,19 @@ def analysis():
 
 @app.route("/update-analysis", methods=['GET', 'POST'])
 def update_analysis():
-    """
-    Re-runs the database queries and returns the results as JSON.
-    This is called by JavaScript to refresh the page content.
+    """Re-execute database queries and return results as JSON for dynamic page updates.
+    
+    This route provides an API endpoint for refreshing analysis data without
+    requiring a full page reload. It executes all analysis queries and returns
+    the results as JSON data that can be consumed by client-side JavaScript
+    for dynamic content updates.
+    
+    The function checks if a data pipeline is currently in progress and returns
+    a conflict status if so. Otherwise, it executes all queries and returns
+    the results in JSON format.
+    
+    :returns: JSON response with query results, error message, or conflict status.
+    :rtype: flask.Response
     """
     if pipeline_in_progress:
         return jsonify({
@@ -118,8 +162,19 @@ def update_analysis():
 
 @app.route("/pull-data", methods=["POST"])
 def pull_data():
-    """ 
-    This runs the pipeline to pull down any new data. 
+    """Initiate the full data pipeline to pull and process new application data.
+    
+    This route triggers the complete data pipeline process, including scraping
+    new entries, LLM processing, and database loading. It manages the global
+    pipeline state to prevent concurrent pipeline executions and provides
+    status feedback to the client.
+    
+    The function checks if a pipeline is already in progress and returns a
+    conflict status if so. Otherwise, it sets the pipeline state and executes
+    the full pipeline process.
+    
+    :returns: JSON response with success message or conflict/error status.
+    :rtype: flask.Response
     """
     global pipeline_in_progress
     if pipeline_in_progress:
@@ -131,8 +186,15 @@ def pull_data():
 
 @app.route("/status")
 def status():
-    """
-    This lets you know if the pipeline is currently running.
+    """Return the current status of the data pipeline process.
+    
+    This route provides a simple API endpoint for checking whether the data
+    pipeline is currently running. It returns JSON data indicating the
+    current pipeline state, which can be used by client-side code to
+    provide appropriate user feedback and interface updates.
+    
+    :returns: JSON response with pipeline status boolean.
+    :rtype: flask.Response
     """
     return jsonify({"pipeline_in_progress": pipeline_in_progress})
 

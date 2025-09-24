@@ -1,7 +1,7 @@
 import psycopg
 import pytest
 import json
-from src import app, load_new_data, scrape_and_clean
+from src import scrape_and_clean
 from src.load_data import load_initial_json_data
 from src.load_new_data import main as load_new_data_main
 from src.query_data import execute_query, run_all_queries_for_console
@@ -27,7 +27,15 @@ FAKE_ENTRY_DATA = [
 
 
 def create_fake_jsonl_file(tmp_path, data):
-    """Helper function to create a JSONL file in a temporary directory."""
+    """Helper function to create a JSONL file in a temporary directory.
+    
+    :param tmp_path: Pytest temporary directory fixture.
+    :type tmp_path: pathlib.Path
+    :param data: List of dictionaries to write to the JSONL file.
+    :type data: list
+    :returns: String path to the created JSONL file.
+    :rtype: str
+    """
     jsonl_file = tmp_path / "new_structured_entries.json.jsonl"
     with open(jsonl_file, 'w') as f:
         for item in data:
@@ -37,10 +45,20 @@ def create_fake_jsonl_file(tmp_path, data):
 
 @pytest.mark.db
 def test_insert_on_pull(client, db_session, mocker, tmp_path):
-    """
-    After POST/pull-data new rows exist.  Start with a clean database
-    and do a fresh pull with /pull-data.  After the pull the database
-    should be populated.
+    """Test that POST /pull-data inserts new rows into the database.
+    
+    This test starts with a clean database and performs a fresh pull with
+    the /pull-data endpoint. After the pull, the database should be populated
+    with the expected number of rows and correct data.
+    
+    :param client: Flask test client fixture for making HTTP requests.
+    :type client: flask.testing.FlaskClient
+    :param db_session: Database session fixture providing a clean database connection.
+    :type db_session: psycopg.Connection
+    :param mocker: Pytest mocker fixture for mocking external dependencies.
+    :type mocker: pytest_mock.MockerFixture
+    :param tmp_path: Pytest temporary directory fixture.
+    :type tmp_path: pathlib.Path
     """
     # Ensure DB is empty and create the fake data file.
     with db_session.cursor() as cur:
@@ -68,8 +86,20 @@ def test_insert_on_pull(client, db_session, mocker, tmp_path):
 
 @pytest.mark.db
 def test_idempotency_constraints(client, db_session, mocker, tmp_path):
-    """
-    Duplicate pulls do not duplicate rows.
+    """Test that duplicate pulls do not duplicate rows in the database.
+    
+    This test verifies that running the pull operation multiple times with
+    the same data does not create duplicate entries, ensuring the database
+    constraints properly prevent data duplication.
+    
+    :param client: Flask test client fixture for making HTTP requests.
+    :type client: flask.testing.FlaskClient
+    :param db_session: Database session fixture providing a clean database connection.
+    :type db_session: psycopg.Connection
+    :param mocker: Pytest mocker fixture for mocking external dependencies.
+    :type mocker: pytest_mock.MockerFixture
+    :param tmp_path: Pytest temporary directory fixture.
+    :type tmp_path: pathlib.Path
     """
     # Run the pull once to populate the database.
     fake_file_path = create_fake_jsonl_file(tmp_path, FAKE_ENTRY_DATA)
@@ -93,8 +123,14 @@ def test_idempotency_constraints(client, db_session, mocker, tmp_path):
 
 @pytest.mark.db
 def test_simple_query_function(db_with_data):
-    """
-    Test simple query function returns expected data.
+    """Test that the simple query function returns expected data formats.
+    
+    This test verifies that the ``execute_query`` function correctly handles
+    both single row and multiple row queries, returning the appropriate data
+    types for each query type.
+    
+    :param db_with_data: Database fixture providing a populated database connection.
+    :type db_with_data: psycopg.Connection
     """
     # The db_with_data fixture provides a connection to a populated DB.
     conn = db_with_data
@@ -116,8 +152,18 @@ def test_simple_query_function(db_with_data):
 
 @pytest.mark.db
 def test_pull_with_no_new_entries(client, db_session, mocker):
-    """
-    Test pull with no new entries: Pipeline skips steps if scraper finds nothing.
+    """Test pull operation when scraper finds no new entries.
+    
+    This test verifies that the pipeline correctly skips subsequent steps
+    when the scraper returns zero new entries, ensuring that downstream
+    processing functions are not called unnecessarily.
+    
+    :param client: Flask test client fixture for making HTTP requests.
+    :type client: flask.testing.FlaskClient
+    :param db_session: Database session fixture providing a clean database connection.
+    :type db_session: psycopg.Connection
+    :param mocker: Pytest mocker fixture for mocking external dependencies.
+    :type mocker: pytest_mock.MockerFixture
     """
     # Start with an empty DB and mock the pipeline functions.
     with db_session.cursor() as cur:
@@ -147,9 +193,16 @@ def test_pull_with_no_new_entries(client, db_session, mocker):
 
 @pytest.mark.db
 def test_load_initial_data_success(db_session, tmp_path):
-    """
-    Tests the successful "happy path": a valid file is provided, a connection
-    is made, and data is inserted correctly.
+    """Test successful loading of initial data from a valid JSONL file.
+    
+    This test verifies the "happy path" scenario where a valid file is provided,
+    a database connection is established, and data is correctly inserted into
+    the database.
+    
+    :param db_session: Database session fixture providing a clean database connection.
+    :type db_session: psycopg.Connection
+    :param tmp_path: Pytest temporary directory fixture.
+    :type tmp_path: pathlib.Path
     """
     # Create a temporary file with valid data.
     test_file = tmp_path / "good_data.jsonl"
@@ -172,8 +225,16 @@ def test_load_initial_data_success(db_session, tmp_path):
 
 @pytest.mark.db
 def test_load_initial_data_db_error(mocker, tmp_path):
-    """
-    Tests that an exception during `psycopg.connect` is handled correctly.
+    """Test that database connection errors are handled correctly during initial data loading.
+    
+    This test verifies that when ``psycopg.connect`` raises an exception,
+    the function properly propagates the error without causing unhandled
+    exceptions.
+    
+    :param mocker: Pytest mocker fixture for mocking external dependencies.
+    :type mocker: pytest_mock.MockerFixture
+    :param tmp_path: Pytest temporary directory fixture.
+    :type tmp_path: pathlib.Path
     """
     # Create a valid data file, so the function tries to connect.
     test_file = tmp_path / "good_data.jsonl"
@@ -193,9 +254,18 @@ def test_load_initial_data_db_error(mocker, tmp_path):
 
 @pytest.mark.db
 def test_load_initial_data_with_empty_file(db_session, tmp_path, capsys):
-    """
-    Tests the `if not data:` branch by providing an empty file.
-    It should print a message and not insert any data.
+    """Test loading initial data from an empty file.
+    
+    This test verifies the ``if not data:`` code branch by providing a
+    completely empty file. The function should print an appropriate message
+    and not attempt to insert any data into the database.
+    
+    :param db_session: Database session fixture providing a clean database connection.
+    :type db_session: psycopg.Connection
+    :param tmp_path: Pytest temporary directory fixture.
+    :type tmp_path: pathlib.Path
+    :param capsys: Pytest fixture for capturing stdout and stderr.
+    :type capsys: pytest.CaptureFixture
     """
     # Create a temporary file that is completely empty.
     empty_file = tmp_path / "empty.jsonl"
@@ -216,9 +286,18 @@ def test_load_initial_data_with_empty_file(db_session, tmp_path, capsys):
 
 @pytest.mark.db
 def test_load_new_data_skips_blank_lines(db_session, tmp_path, mocker):
-    """
-    Tests that the data loader correctly skips blank or whitespace-only lines
-    in the input file, using the existing FAKE_ENTRY_DATA.
+    """Test that the data loader correctly skips blank or whitespace-only lines.
+    
+    This test verifies that when processing a JSONL file containing blank lines
+    and whitespace-only lines, the loader correctly skips these lines and only
+    processes valid JSON entries.
+    
+    :param db_session: Database session fixture providing a clean database connection.
+    :type db_session: psycopg.Connection
+    :param tmp_path: Pytest temporary directory fixture.
+    :type tmp_path: pathlib.Path
+    :param mocker: Pytest mocker fixture for mocking external dependencies.
+    :type mocker: pytest_mock.MockerFixture
     """
     # Create a file with FAKE_ENTRY_DATA and blank lines.
     # We write the file manually here to insert the blank lines for the test.
@@ -247,9 +326,21 @@ def test_load_new_data_skips_blank_lines(db_session, tmp_path, mocker):
 
 @pytest.mark.db
 def test_load_new_data_handles_malformed_json(db_session, tmp_path, mocker, capsys):
-    """
-    Tests that the data loader correctly skips a line with malformed JSON
-    and prints a warning, covering the JSONDecodeError except block.
+    """Test that the data loader correctly handles malformed JSON lines.
+    
+    This test verifies that when the data loader encounters a line with
+    malformed JSON, it correctly skips the line, prints a warning message,
+    and continues processing valid entries. This covers the JSONDecodeError
+    exception handling block.
+    
+    :param db_session: Database session fixture providing a clean database connection.
+    :type db_session: psycopg.Connection
+    :param tmp_path: Pytest temporary directory fixture.
+    :type tmp_path: pathlib.Path
+    :param mocker: Pytest mocker fixture for mocking external dependencies.
+    :type mocker: pytest_mock.MockerFixture
+    :param capsys: Pytest fixture for capturing stdout and stderr.
+    :type capsys: pytest.CaptureFixture
     """
     # Create a file with valid and invalid JSON.
     valid_record_1 = json.dumps({"pid": 101, "gpa": 3.9})
@@ -280,11 +371,18 @@ def test_load_new_data_handles_malformed_json(db_session, tmp_path, mocker, caps
 
 @pytest.mark.db
 def test_load_new_data_empty_file(db_session, mocker):
-    """
-    Test `load_new_data` handles an empty input file.
+    """Test that ``load_new_data`` handles an empty input file gracefully.
+    
+    This test verifies that when the input file is empty, the function
+    processes it without errors and leaves the database unchanged.
+    
+    :param db_session: Database session fixture providing a clean database connection.
+    :type db_session: psycopg.Connection
+    :param mocker: Pytest mocker fixture for mocking external dependencies.
+    :type mocker: pytest_mock.MockerFixture
     """
     mocker.patch("builtins.open", mocker.mock_open(read_data=""))
-    load_new_data.main(db_session)
+    load_new_data_main(db_session)
     with db_session.cursor() as cur:
         cur.execute("SELECT COUNT(*) FROM applicants;")
         assert cur.fetchone()[0] == 0
@@ -292,8 +390,14 @@ def test_load_new_data_empty_file(db_session, mocker):
 
 @pytest.mark.db
 def test_load_initial_data_errors(mocker):
-    """
-    Test `load_data` script handles file and JSON errors.
+    """Test that ``load_data`` script handles file and JSON errors gracefully.
+    
+    This test verifies that the function can handle both FileNotFoundError
+    and JSONDecodeError exceptions without crashing, ensuring robust error
+    handling for various file-related issues.
+    
+    :param mocker: Pytest mocker fixture for mocking external dependencies.
+    :type mocker: pytest_mock.MockerFixture
     """
     # Test FileNotFoundError
     load_initial_json_data("non_existent_file.json", "")
@@ -306,8 +410,14 @@ def test_load_initial_data_errors(mocker):
 
 @pytest.mark.db
 def test_get_latest_day_info_db_error(mocker):
-    """
-    Test `get_latest_day_info` handles a psycopg error.
+    """Test that ``get_latest_day_info`` handles database errors gracefully.
+    
+    This test verifies that when a psycopg error occurs during database
+    operations, the function returns appropriate default values instead
+    of crashing.
+    
+    :param mocker: Pytest mocker fixture for mocking external dependencies.
+    :type mocker: pytest_mock.MockerFixture
     """
     mock_conn = mocker.MagicMock()
     mock_conn.cursor.side_effect = psycopg.Error("DB connection failed")
@@ -319,20 +429,35 @@ def test_get_latest_day_info_db_error(mocker):
 
 @pytest.mark.db
 def test_load_new_data_file_not_found(db_session, mocker):
-    """
-    Test `load_new_data` handles FileNotFoundError gracefully.
+    """Test that ``load_new_data_main`` handles FileNotFoundError gracefully.
+
+    This test ensures that if the target input file for ``load_new_data_main``
+    does not exist, the function catches the ``FileNotFoundError`` and exits
+    gracefully without raising an unhandled exception.
+
+    :param db_session: Database session fixture providing a clean database connection.
+    :type db_session: psycopg.Connection
+    :param mocker: Pytest mocker fixture for mocking external dependencies.
+    :type mocker: pytest_mock.MockerFixture
     """
     mocker.patch("builtins.open", side_effect=FileNotFoundError)
     # The function should run, print an error, but not crash.
-    load_new_data.main(db_session)
+    load_new_data_main(db_session)
     # No assertion needed, success is the test not raising an unhandled exception.
 
 
 @pytest.mark.db
 def test_run_all_queries_for_console(db_with_data, capsys):
-    """
-    run_all_queries_for_console should return formatted analysis to 
-    the console.
+    """Test that ``run_all_queries_for_console`` returns formatted analysis output.
+    
+    This test verifies that the function executes all analysis queries and
+    formats the output correctly for console display, ensuring that key
+    analysis results are properly presented to the user.
+    
+    :param db_with_data: Database fixture providing a populated database connection.
+    :type db_with_data: psycopg.Connection
+    :param capsys: Pytest fixture for capturing stdout and stderr.
+    :type capsys: pytest.CaptureFixture
     """
     # The db_with_data fixture provides the populated connection.
     conn = db_with_data

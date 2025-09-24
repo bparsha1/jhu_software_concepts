@@ -17,8 +17,19 @@ DB_CONN_STR = "dbname=grad_cafe user=postgres"
 
 # --- Main Entry Point for the Pipeline ---
 def main(conn):
-    """ 
-    Scrapes the latest data, or starts from Jan 2020.
+    """Scrape the latest data from the website, starting from most recent database entry or January 2020.
+    
+    This function serves as the main entry point for the scraping pipeline. It checks
+    robots.txt permissions, determines the starting point for scraping based on existing
+    database data, performs the scraping operation, and saves results to a JSON file.
+    
+    The function will start scraping from the most recent date in the database, or from
+    January 1, 2020 if the database is empty (which typically yields about 44k records).
+    
+    :param conn: Database connection for querying existing data and determining scrape start point.
+    :type conn: psycopg.Connection
+    :returns: Number of new entries found and saved, or 0 if no new data or robots.txt disallows.
+    :rtype: int
     """
     print("--- Starting Scrape & Clean Step ---")
 
@@ -50,8 +61,17 @@ def main(conn):
         return 0
 
 def get_latest_day_info(conn):
-    """ 
-    This was added to get the latest date from the database and all PIDs from that date.
+    """Get the most recent entry date from database and all PIDs from that date.
+    
+    This function queries the database to find the latest date_added value and
+    retrieves all PIDs that were added on that date. This information is used
+    to determine where to resume scraping and which entries to skip to avoid
+    duplicates.
+    
+    :param conn: Database connection for querying applicant data.
+    :type conn: psycopg.Connection
+    :returns: Tuple of (latest_date, set_of_pids) or (None, empty_set) if no data or error.
+    :rtype: tuple[datetime.date, set[int]]
     """
     try:
         with conn.cursor() as cur:
@@ -72,8 +92,25 @@ def get_latest_day_info(conn):
         return None, set()
 
 def scrape_and_clean(latest_db_date=None, pids_on_latest_date=None, page_limit=100):
-    """ 
-    This function does the scraping and formatting.
+    """Scrape and parse graduate school application data from the target website.
+    
+    This function performs the core scraping logic, fetching pages sequentially
+    and parsing HTML to extract structured application data. It stops scraping
+    when it encounters entries older than the latest database date to avoid
+    processing unnecessary historical data.
+    
+    The function handles duplicate detection by checking PIDs against those
+    already present on the latest database date, and includes comprehensive
+    error handling for network issues and malformed HTML.
+    
+    :param latest_db_date: Most recent date in database; scraping stops when older entries found.
+    :type latest_db_date: datetime.date
+    :param pids_on_latest_date: Set of PIDs already present on the latest database date.
+    :type pids_on_latest_date: set[int]
+    :param page_limit: Maximum number of pages to scrape before stopping.
+    :type page_limit: int
+    :returns: List of dictionaries containing structured entry data for new records.
+    :rtype: list[dict]
     """
     if pids_on_latest_date is None:
         pids_on_latest_date = set()
@@ -169,10 +206,21 @@ def scrape_and_clean(latest_db_date=None, pids_on_latest_date=None, page_limit=1
     return new_entries
 
 def infer_years(date_strings: list[str]) -> list[str]:
-    """ I noticed sometimes the date existed without the year.
-        This function was added to check entries before and after
-        to determine what to put for the year since the entries
-        are chronological.
+    """Infer missing years in date strings using chronological context from surrounding entries.
+    
+    This function handles cases where scraped date strings lack year information
+    by analyzing the chronological sequence of entries. It uses a two-pass algorithm
+    (forward and backward) to propagate known years to entries with missing years,
+    ensuring chronological consistency.
+    
+    The function handles various date formats and uses surrounding entries to
+    determine the most likely year for ambiguous dates, which is necessary because
+    the scraped data is chronologically ordered but sometimes omits years.
+    
+    :param date_strings: List of date strings that may be missing year information.
+    :type date_strings: list[str]
+    :returns: List of standardized date strings in YYYY-MM-DD format, with inferred years.
+    :rtype: list[str]
     """
     
     parsed_dates = []
@@ -240,8 +288,17 @@ def infer_years(date_strings: list[str]) -> list[str]:
     return results
 
 def parse_status_and_date(tag):
-    """ 
-    This function breaks out the decision date and the status.
+    """Extract application status and decision date from HTML table cell.
+    
+    This function parses the status/decision cell from the scraped HTML table,
+    extracting both the application status (Accepted, Rejected, Interview, etc.)
+    and the decision date if present. It uses text analysis and regex patterns
+    to identify these components from the formatted cell content.
+    
+    :param tag: BeautifulSoup tag containing the status and date information.
+    :type tag: bs4.element.Tag
+    :returns: Tuple of (status_string, decision_date_string) where date may be None.
+    :rtype: tuple[str, str]
     """
 
     text = tag.get_text(strip=True)
@@ -255,7 +312,20 @@ def parse_status_and_date(tag):
     return status, decision_date_str
 
 def format_decision_date(date_str, reference_year):
-    """ This function formats the decision date."""
+    """Format decision date string into standardized YYYY-MM-DD format.
+    
+    This function takes a decision date string (which may lack year information)
+    and a reference year, then attempts to parse and format it into a standardized
+    date format. It handles various input formats and uses the reference year
+    when the date string doesn't include year information.
+    
+    :param date_str: Date string that may be in various formats, possibly missing year.
+    :type date_str: str
+    :param reference_year: Year to use when the date string doesn't include a year.
+    :type reference_year: int
+    :returns: Formatted date string in YYYY-MM-DD format, or None if parsing fails.
+    :rtype: str
+    """
     if not date_str or not reference_year:
         return None
 
@@ -275,8 +345,17 @@ def format_decision_date(date_str, reference_year):
         return None
 
 def parse_details_from_badges(row):
-    """
-    Break the details out of the badges.
+    """Extract applicant details (GPA, GRE scores, student type, etc.) from HTML badge elements.
+    
+    This function parses the detail row that contains applicant information displayed
+    as badge elements (div tags with specific classes). It extracts numerical values
+    like GPA and GRE scores, as well as categorical information like student type
+    and semester/year information.
+    
+    :param row: BeautifulSoup element containing the detail row with badge information.
+    :type row: bs4.element.Tag
+    :returns: Dictionary containing parsed applicant details with None for missing values.
+    :rtype: dict
     """
     details = {'gpa': None, 'gre': None, 'gre_v': None, 'gre_aw': None, 'student_type': None, 'semester_and_year': None}
     if not row: return details

@@ -23,9 +23,25 @@ FAKE_ENTRY_DATA = [
 
 @pytest.mark.integration
 def test_end_to_end_flow_pull_update_render(client, db_session, mocker, tmp_path):
-    """
-    Tests the full flow: pulling data, updating the analysis via the endpoint,
-    and then rendering the page to see the final result.
+    """Test the complete end-to-end workflow from data pull to final rendering.
+    
+    This integration test verifies the full application workflow: pulling data
+    from a source, updating the analysis via the endpoint, and rendering the
+    final results on the web page. It ensures that all components work together
+    correctly and that the data flows properly through the entire system.
+    
+    The test creates fake data, mocks external dependencies, executes the pull
+    and update operations, and then verifies that the final rendered page
+    contains the expected analysis results.
+    
+    :param client: Flask test client fixture for making HTTP requests to the application.
+    :type client: flask.testing.FlaskClient
+    :param db_session: Database session fixture providing a clean database connection.
+    :type db_session: psycopg.Connection
+    :param mocker: Pytest mocker fixture for mocking external dependencies.
+    :type mocker: pytest_mock.MockerFixture
+    :param tmp_path: Pytest temporary directory fixture.
+    :type tmp_path: pathlib.Path
     """
     # --- SETUP & PULL ---
     jsonl_file = tmp_path / "integration_test_data.jsonl"
@@ -61,9 +77,25 @@ def test_end_to_end_flow_pull_update_render(client, db_session, mocker, tmp_path
 
 @pytest.mark.integration
 def test_multiple_pulls_are_idempotent(client, db_session, mocker, tmp_path):
-    """
-    Tests that running the pull process twice with the same data does not
-    create duplicate rows in the database.
+    """Test that multiple pulls with identical data do not create duplicate entries.
+    
+    This integration test verifies the idempotency of the data pull process by
+    running the pull operation twice with the exact same data and ensuring that
+    no duplicate rows are created in the database. This is critical for ensuring
+    data integrity when the pull process might be run multiple times.
+    
+    The test sets up fake data, performs an initial pull to populate the database,
+    then performs a second pull with identical data and verifies that the row
+    count remains unchanged.
+    
+    :param client: Flask test client fixture for making HTTP requests to the application.
+    :type client: flask.testing.FlaskClient
+    :param db_session: Database session fixture providing a clean database connection.
+    :type db_session: psycopg.Connection
+    :param mocker: Pytest mocker fixture for mocking external dependencies.
+    :type mocker: pytest_mock.MockerFixture
+    :param tmp_path: Pytest temporary directory fixture.
+    :type tmp_path: pathlib.Path
     """
     # --- FIRST PULL ---
     jsonl_file = tmp_path / "idempotency_test_data.jsonl"

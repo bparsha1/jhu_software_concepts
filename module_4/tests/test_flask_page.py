@@ -5,10 +5,27 @@ from bs4 import BeautifulSoup
 
 @pytest.mark.web
 def test_app_factory(client, db_session, mocker):
-    """
-    Tests that all routes are live and return the expected status codes.
-    Uses 'db_session' to ensure database tables exist.
-    Uses 'mocker' to prevent the real data pipeline from running.
+    """Test application factory and route availability.
+    
+    This test verifies that all application routes are properly configured
+    and return expected HTTP status codes. It uses database fixtures to
+    ensure proper test isolation and mocking to prevent side effects from
+    the data pipeline execution.
+    
+    The test patches ``src.app.run_full_pipeline`` to prevent the actual
+    data pipeline from executing, which would slow down the test and
+    potentially cause side effects. It verifies the following routes:
+    GET /, GET /update-analysis, POST /pull-data, and GET /status.
+    
+    It also validates that the test application is properly configured
+    with TESTING=True.
+    
+    :param client: Test client fixture for making HTTP requests to the application.
+    :type client: flask.testing.FlaskClient
+    :param db_session: Database session fixture that ensures database tables exist for the test environment.
+    :type db_session: sqlalchemy.orm.Session
+    :param mocker: Pytest mocker fixture for patching dependencies and preventing real data pipeline execution.
+    :type mocker: pytest_mock.MockerFixture
     """
     # Mock the slow pipeline function so the test runs fast.
     mocker.patch('src.app.run_full_pipeline')
@@ -33,9 +50,22 @@ def test_app_factory(client, db_session, mocker):
 
 @pytest.mark.web
 def test_content(client, db_with_data):
-    """
-    Tests that the html elements load correctly on the analysis page.
-    Uses the 'db_with_data' fixture to ensure the database is populated.
+    """Test HTML content rendering on the analysis page.
+    
+    This test verifies that the analysis page renders correctly with all 
+    expected HTML elements present and properly structured. It ensures
+    the frontend components are loading as expected when the database
+    contains data.
+    
+    The test parses the HTML response using BeautifulSoup to verify that
+    the Pull Data button exists with correct ID and text, the Update Analysis
+    button exists with correct ID and text, answer elements are present with
+    expected content, and the page title contains "Grad School Cafe Data Analysis".
+    
+    :param client: Test client fixture for making HTTP requests to the application.
+    :type client: flask.testing.FlaskClient
+    :param db_with_data: Database session fixture that provides a populated database with test data.
+    :type db_with_data: sqlalchemy.orm.Session
     """
     response = client.get('/analysis')
     assert response.status_code == 200 # First, ensure the page loaded
@@ -58,8 +88,22 @@ def test_content(client, db_with_data):
 @pytest.mark.web 
 @pytest.mark.buttons
 def test_update_analysis_handles_db_error(client, mocker):
-    """
-    Checking that a database error results in a 500 status code.
+    """Test error handling for database connection failures in update analysis.
+    
+    This test verifies that the application properly handles database connection 
+    errors during the update analysis operation by returning appropriate HTTP 
+    status codes and error messages in JSON format.
+    
+    The test simulates a database outage by patching ``psycopg.connect`` to
+    raise an exception. It verifies that the endpoint returns HTTP 500,
+    the response is properly formatted as JSON, and the error message matches
+    the expected format. This ensures graceful degradation when database
+    connectivity issues occur.
+    
+    :param client: Test client fixture for making HTTP requests to the application.
+    :type client: flask.testing.FlaskClient
+    :param mocker: Pytest mocker fixture used to simulate database connection failures.
+    :type mocker: pytest_mock.MockerFixture
     """
     # Use mocker to make the database connection fail.
     # Patch 'psycopg.connect' and tell it to raise an exception
@@ -82,9 +126,23 @@ def test_update_analysis_handles_db_error(client, mocker):
 
 @pytest.mark.web
 def test_index_route_db_error(client, mocker):
-    """Test that the index route returns 500 on a database connection error."""
+    """Test error handling for database connection failures on the index route.
+    
+    This test verifies that the index/analysis route properly handles database 
+    operational errors by returning an appropriate HTTP 500 status code
+    and error message to the user.
+    
+    The test specifically simulates a ``psycopg.OperationalError`` (rather than
+    a generic Exception) to test more realistic database failure scenarios.
+    It verifies that the route returns HTTP 500 when database is unavailable
+    and the response contains the expected error message in the body.
+    
+    :param client: Test client fixture for making HTTP requests to the application.
+    :type client: flask.testing.FlaskClient
+    :param mocker: Pytest mocker fixture used to simulate database operational errors.
+    :type mocker: pytest_mock.MockerFixture
+    """
     mocker.patch('psycopg.connect', side_effect=psycopg.OperationalError("DB is down"))
     response = client.get('/analysis')
     assert response.status_code == 500
     assert b"Error loading data from the database" in response.data
-

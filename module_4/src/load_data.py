@@ -6,9 +6,19 @@ import psycopg
 # --- database connection string ---
 DB_CONN_STR = "dbname=grad_cafe user=postgres"
 
-def setup_database(db_conn_str): # <--- CHANGED
-    """
-    Creates the applicants table in the database if it doesn't exist.
+def setup_database(db_conn_str):
+    """Create the applicants table in the database if it doesn't exist.
+    
+    This function initializes the database schema by creating the applicants
+    table with all required columns for storing graduate school application
+    data. The table includes fields for applicant information, academic metrics,
+    application status, and LLM-generated university/program classifications.
+    
+    The function uses CREATE TABLE IF NOT EXISTS to ensure idempotent operation,
+    allowing it to be called multiple times without error.
+    
+    :param db_conn_str: Database connection string for establishing the connection.
+    :type db_conn_str: str
     """
     with psycopg.connect(db_conn_str) as conn: 
         with conn.cursor() as cur:
@@ -33,10 +43,21 @@ def setup_database(db_conn_str): # <--- CHANGED
             """)
     print(f"Database table 'applicants' is ready on connection: {db_conn_str}")
 
-# This function also accepts the connection string.
-def load_initial_json_data(file_path, db_conn_str): 
-    """
-    Reads cleaned JSON data and performs a bulk load into the database.
+def load_initial_json_data(file_path, db_conn_str):
+    """Read cleaned JSON data from file and perform bulk load into database.
+    
+    This function handles the initial loading of processed applicant data from
+    a JSONL file into the database. It reads the file line by line, parses
+    each JSON entry, and performs bulk insertion with conflict resolution.
+    
+    The function includes comprehensive error handling for file operations and
+    JSON parsing errors. It uses ON CONFLICT (pid) DO NOTHING to handle
+    duplicate entries gracefully during the initial data load process.
+    
+    :param file_path: Path to the JSONL file containing applicant data to load.
+    :type file_path: str
+    :param db_conn_str: Database connection string for establishing the connection.
+    :type db_conn_str: str
     """
     try:
         data = []
@@ -90,4 +111,4 @@ if __name__ == "__main__": # pragma: no cover
     
     # Update the calls to pass the default connection string.
     setup_database(DB_CONN_STR) 
-    load_initial_json_data(input_file, DB_CONN_STR) 
+    load_initial_json_data(input_file, DB_CONN_STR)

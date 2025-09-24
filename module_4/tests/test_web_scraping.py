@@ -57,8 +57,17 @@ FAKE_HTML = """
 # When Scraping is Disallowed by robots.txt
 @pytest.mark.web
 def test_main_aborts_if_robots_disallows(mocker, capsys):
-    """
-    Tests that the main function exits early if robots.txt prevents scraping.
+    """Test that main function exits early when robots.txt prevents scraping.
+    
+    This test verifies that the scraper respects robots.txt restrictions by
+    checking if the main function properly exits when robots.txt disallows
+    scraping. It mocks the RobotFileParser to return False for can_fetch
+    and ensures the function returns 0 with an appropriate message.
+    
+    :param mocker: Pytest mocker fixture for mocking external dependencies.
+    :type mocker: pytest_mock.MockerFixture
+    :param capsys: Pytest fixture for capturing stdout and stderr.
+    :type capsys: pytest.CaptureFixture
     """
     # Mock the RobotFileParser to disallow fetching.
     mock_parser = MagicMock()
@@ -77,9 +86,19 @@ def test_main_aborts_if_robots_disallows(mocker, capsys):
 # When New Data is Found (on an empty DB)
 @pytest.mark.db
 def test_main_scrapes_and_saves_new_data(mocker, tmp_path, db_session):
-    """
-    Tests the database is empty, the scraper finds new data,
-    and the data is saved to a file.
+    """Test that main function scrapes and saves new data when database is empty.
+    
+    This test verifies the complete workflow when the database is empty and
+    new data is found during scraping. It mocks the database query to return
+    empty results, mocks the scraper to return fake data, and verifies that
+    the data is properly saved to the output file with the correct count returned.
+    
+    :param mocker: Pytest mocker fixture for mocking external dependencies.
+    :type mocker: pytest_mock.MockerFixture
+    :param tmp_path: Pytest temporary directory fixture.
+    :type tmp_path: pathlib.Path
+    :param db_session: Database session fixture providing a clean database connection.
+    :type db_session: psycopg.Connection
     """
 
     # Mock the database call to simulate an empty database.
@@ -115,8 +134,19 @@ def test_main_scrapes_and_saves_new_data(mocker, tmp_path, db_session):
 # When No New Data is Found
 @pytest.mark.db
 def test_main_handles_no_new_data(mocker, db_session, capsys):
-    """
-    Tests the case where the scraper runs but finds no new entries.
+    """Test that main function handles the case where scraper finds no new entries.
+    
+    This test verifies that when the scraper runs but finds no new data
+    (returns empty list), the main function handles this gracefully by
+    returning 0 and printing an appropriate message. It mocks a populated
+    database state and empty scraper results.
+    
+    :param mocker: Pytest mocker fixture for mocking external dependencies.
+    :type mocker: pytest_mock.MockerFixture
+    :param db_session: Database session fixture providing a clean database connection.
+    :type db_session: psycopg.Connection
+    :param capsys: Pytest fixture for capturing stdout and stderr.
+    :type capsys: pytest.CaptureFixture
     """
 
     # Simulate a database that has data up to a certain date
@@ -144,8 +174,14 @@ def test_main_handles_no_new_data(mocker, db_session, capsys):
 # Check an empty database.
 @pytest.mark.db
 def test_get_latest_day_info_empty_db(db_session):
-    """
-    get_latest_day_info should return None for an empty database.
+    """Test that ``get_latest_day_info`` returns None for an empty database.
+    
+    This test verifies that when the database has no applicant records,
+    the function returns None for the latest date and an empty set for PIDs,
+    which represents the initial state before any data has been scraped.
+    
+    :param db_session: Database session fixture providing a clean database connection.
+    :type db_session: psycopg.Connection
     """
     # The db_session fixture provides a clean, empty database.
     conn = db_session
@@ -161,8 +197,15 @@ def test_get_latest_day_info_empty_db(db_session):
 # Check a populated database.
 @pytest.mark.db
 def test_get_latest_day_info_with_data(db_session):
-    """
-    get_latest_day_info should return the newest date in the fake data.
+    """Test that ``get_latest_day_info`` returns the newest date and PIDs from populated database.
+    
+    This test verifies that when the database contains multiple applicant records
+    with different dates, the function correctly identifies the most recent date
+    and returns all PIDs from that date. This is essential for determining
+    where to resume scraping and avoiding duplicate entries.
+    
+    :param db_session: Database session fixture providing a clean database connection.
+    :type db_session: psycopg.Connection
     """
     # Insert records with different dates into the test database.
     conn = db_session
@@ -184,8 +227,14 @@ def test_get_latest_day_info_with_data(db_session):
 # Check for database error reaction.
 @pytest.mark.db
 def test_get_latest_day_info_db_error(mocker):
-    """
-    get_latest_day_info should return a default value on error.
+    """Test that ``get_latest_day_info`` returns default values on database error.
+    
+    This test verifies that when a database error occurs during the query,
+    the function gracefully handles the exception and returns safe default
+    values (None, empty set) instead of crashing, ensuring robust error handling.
+    
+    :param mocker: Pytest mocker fixture for mocking external dependencies.
+    :type mocker: pytest_mock.MockerFixture
     """
     # Create a mock connection object that will raise an error when used.
     mock_conn = MagicMock()
@@ -202,8 +251,15 @@ def test_get_latest_day_info_db_error(mocker):
 # Test for duplicate records parsed out by scrape_and_clean.
 @pytest.mark.web
 def test_scrape_and_clean_logic(mocker):
-    """
-    scrape_and_clean should skip duplicate records, and stop before entering an old one.
+    """Test that ``scrape_and_clean`` skips duplicates and stops at older entries.
+    
+    This test verifies the core logic of the scraper: skipping duplicate records
+    that already exist in the database (same PID on the same date) and stopping
+    when it encounters entries older than the latest database date. This ensures
+    efficient scraping that avoids duplicates and unnecessary processing.
+    
+    :param mocker: Pytest mocker fixture for mocking external dependencies.
+    :type mocker: pytest_mock.MockerFixture
     """
     # Mock the web request to return our fake HTML instead of hitting the internet.
     mock_response = mocker.Mock()
@@ -244,9 +300,14 @@ def test_scrape_and_clean_logic(mocker):
 # Check that scrape_and_clean deals with None pids.
 @pytest.mark.web
 def test_scrape_and_clean_handles_none_pids(mocker):
-    """
-    Tests the `if pids_on_latest_date is None:` line by calling the function
-    with that argument set to None, ensuring it doesn't crash.
+    """Test that ``scrape_and_clean`` handles None pids_on_latest_date parameter.
+    
+    This test verifies that when pids_on_latest_date is None (which can happen
+    when there's no existing data for the latest date), the function handles
+    this gracefully without crashing and processes entries appropriately.
+    
+    :param mocker: Pytest mocker fixture for mocking external dependencies.
+    :type mocker: pytest_mock.MockerFixture
     """
     # Set up mocks to match the 3 entries in the full FAKE_HTML.
     mock_response = mocker.Mock()
@@ -281,8 +342,17 @@ def test_scrape_and_clean_handles_none_pids(mocker):
 # Check scrape_and_clean http error handling.
 @pytest.mark.web
 def test_scrape_and_clean_handles_http_error_status(mocker, capsys):
-    """
-    Tests that the scraper breaks the loop if it gets a non-200 status code.
+    """Test that ``scrape_and_clean`` handles HTTP error status codes gracefully.
+    
+    This test verifies that when the scraper encounters a non-200 HTTP status
+    code (like 404 Not Found), it breaks the scraping loop, returns an empty
+    list, and prints an appropriate error message rather than continuing
+    with invalid responses.
+    
+    :param mocker: Pytest mocker fixture for mocking external dependencies.
+    :type mocker: pytest_mock.MockerFixture
+    :param capsys: Pytest fixture for capturing stdout and stderr.
+    :type capsys: pytest.CaptureFixture
     """
     # Mock the web request to return a failed status code.
     mock_response = mocker.Mock()
@@ -301,8 +371,17 @@ def test_scrape_and_clean_handles_http_error_status(mocker, capsys):
 ## Check for network error handling.
 @pytest.mark.web
 def test_scrape_and_clean_handles_network_error(mocker, capsys):
-    """
-    Tests that the scraper breaks the loop if a network error occurs.
+    """Test that ``scrape_and_clean`` handles network errors gracefully.
+    
+    This test verifies that when a network error occurs during scraping
+    (such as connection timeouts or DNS failures), the function catches
+    the exception, breaks the scraping loop, and returns an empty list
+    with an appropriate error message.
+    
+    :param mocker: Pytest mocker fixture for mocking external dependencies.
+    :type mocker: pytest_mock.MockerFixture
+    :param capsys: Pytest fixture for capturing stdout and stderr.
+    :type capsys: pytest.CaptureFixture
     """
     # Mock the web request to RAISE a network exception.
     mocker.patch(
@@ -322,8 +401,16 @@ def test_scrape_and_clean_handles_network_error(mocker, capsys):
 ## Handles Missing HTML Content
 @pytest.mark.web
 def test_scrape_and_clean_handles_missing_tbody(mocker, capsys):
-    """
-    Tests that the scraper breaks the loop if the expected HTML table is not found.
+    """Test that ``scrape_and_clean`` handles missing HTML table structure.
+    
+    This test verifies that when the expected HTML table structure (tbody element)
+    is not found on the scraped page, the function handles this gracefully by
+    breaking the scraping loop and returning an empty list with an error message.
+    
+    :param mocker: Pytest mocker fixture for mocking external dependencies.
+    :type mocker: pytest_mock.MockerFixture
+    :param capsys: Pytest fixture for capturing stdout and stderr.
+    :type capsys: pytest.CaptureFixture
     """
     # Mock a successful web request, but with invalid HTML content.
     mock_response = mocker.Mock()
@@ -343,9 +430,17 @@ def test_scrape_and_clean_handles_missing_tbody(mocker, capsys):
 # Test no valid rows in raw HTML.
 @pytest.mark.web
 def test_scrape_and_clean_stops_on_no_valid_rows(mocker, capsys):
-    """
-    Tests that the scraper correctly stops if a page contains a table
-    but no valid multi-column data rows, covering the 'if not main_rows' case.
+    """Test that ``scrape_and_clean`` stops when no valid data rows are found.
+    
+    This test verifies that when a page contains the expected table structure
+    but no valid multi-column data rows (for example, only colspan rows with
+    "no results" messages), the function detects this condition and stops
+    scraping with an appropriate message.
+    
+    :param mocker: Pytest mocker fixture for mocking external dependencies.
+    :type mocker: pytest_mock.MockerFixture
+    :param capsys: Pytest fixture for capturing stdout and stderr.
+    :type capsys: pytest.CaptureFixture
     """
     # Create fake HTML with a tbody that has no valid data rows.
     # This row has only one 'td', so your function will filter it out,

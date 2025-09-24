@@ -7,8 +7,15 @@ from src.load_data import setup_database
 
 @pytest.fixture(scope="session")
 def test_db():
-    """
-    Handles the creation and destruction of the test database for the entire session.
+    """Create and tear down a test database for the entire session.
+
+    This fixture connects to a default PostgreSQL instance, creates a new
+    database specifically for testing, runs the schema setup, and yields
+    the connection string. After all tests in the session are complete,
+    it tears down the test database.
+
+    :yields: The connection string for the newly created test database.
+    :rtype: str
     """
     default_conn_str = "dbname=postgres user=postgres"
     test_db_name = "test_grad_cafe"
@@ -36,8 +43,15 @@ def test_db():
 
 @pytest.fixture(scope="session")
 def app(test_db):
-    """
-    Configures the Flask app once for the entire test session.
+    """Create a Flask app instance for the entire test session.
+
+    This fixture configures the Flask application for testing, setting the
+    TESTING flag to True and providing the test database URI.
+
+    :param test_db: The connection string from the `test_db` fixture.
+    :type test_db: str
+    :yields: The configured Flask application instance.
+    :rtype: flask.Flask
     """
     flask_app.config.update({
         "TESTING": True,
@@ -48,17 +62,32 @@ def app(test_db):
 
 @pytest.fixture(scope="session")
 def client(app):
-    """
-    Provides a Flask test client for making web requests.
+    """Provide a Flask test client for the application.
+
+    This client can be used to make requests to the application's endpoints
+    without running a live server.
+
+    :param app: The Flask application instance from the `app` fixture.
+    :type app: flask.Flask
+    :return: A Flask test client.
+    :rtype: flask.testing.FlaskClient
     """
     return app.test_client()
 
 
 @pytest.fixture(scope="function")
 def db_session(test_db):
-    """
-    Provides a clean database connection for a single test.
-    It connects and TRUNCATES the tables to ensure test isolation.
+    """Provide a clean database session for each test function.
+
+    This fixture establishes a connection to the test database and truncates
+    all tables before yielding the connection. This ensures that each test
+    runs against a clean slate, preventing data from one test from
+    interfering with another. The connection is closed after the test completes.
+
+    :param test_db: The connection string from the `test_db` fixture.
+    :type test_db: str
+    :yields: A database connection object.
+    :rtype: psycopg.Connection
     """
     conn = psycopg.connect(test_db)
     try:
@@ -74,8 +103,16 @@ def db_session(test_db):
 
 @pytest.fixture(scope="function")
 def db_with_data(db_session):
-    """
-    Builds on 'db_session' to provide a database with consistent test data.
+    """Provide a database session pre-populated with test data.
+
+    This fixture builds upon `db_session` by inserting a consistent set of
+    records into the `applicants` table. This is useful for tests that
+    require pre-existing data to operate on.
+
+    :param db_session: A clean database connection from the `db_session` fixture.
+    :type db_session: psycopg.Connection
+    :yields: A database connection object with pre-loaded data.
+    :rtype: psycopg.Connection
     """
     conn = db_session # Receives the clean connection
     
@@ -120,9 +157,11 @@ def db_with_data(db_session):
 
 @pytest.fixture(autouse=True)
 def reset_pipeline_flag():
-    """
-    This is an autouse fixture that automatically resets the pipeline_in_progress
-    flag before every test, ensuring a clean state.
+    """Reset the global `pipeline_in_progress` flag before each test.
+
+    This is an `autouse` fixture, meaning it is automatically applied to
+    every test function. It ensures that the pipeline status is reset to a
+    known state (False) before a test begins, preventing state leakage.
     """
     from src import app
     app.pipeline_in_progress = False
