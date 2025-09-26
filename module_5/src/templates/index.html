@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grad School Cafe Data Analysis</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header>
+        <h1>Grad School Cafe Data Analysis</h1>
+        <div class="buttons">
+            <button id="pullDataBtn" title="Scrape the latest entries from GradCafe and add them to the database. This process can take several minutes.">Pull New Data</button>
+            <button id="updateAnalysisBtn" title="Refresh the analysis using the latest data from the database without reloading the page.">Update Analysis</button>
+        </div>
+    </header>
+    
+    <main>
+        <h2>Analysis</h2>
+        <div id="statusMessage"></div>
+        
+        <div class="card">
+            <p class="question">1. How many entries do you have in your database who have applied for Fall 2025?</p>
+            <p class="answer" id="q1-answer">Answer: Applicant count: {{ results.q1[0] if results.q1 else 0 }}</p>
+        </div>
+
+        <div class="card">
+            <p class="question">2. What percentage of entries are from international students (not American or Other)?</p>
+            <p class="answer" id="q2-answer">Answer: Percent International: {{ '%.2f'|format(results.q2[0]) if results.q2 and results.q2[0] is not none else '0.00' }}%</p>
+        </div>
+
+        <div class="card">
+            <p class="question">3. What is the average GPA, GRE, GRE V, GRE AW of applicants who provided these metrics?</p>
+            <p class="answer" id="q3-answer">Answer: 
+                Average GPA: {{ '%.2f'|format(results.q3[0]) if results.q3 and results.q3[0] is not none else 'N/A' }},
+                Average GRE: {{ '%.2f'|format(results.q3[1]) if results.q3 and results.q3[1] is not none else 'N/A' }},
+                Average GRE V: {{ '%.2f'|format(results.q3[2]) if results.q3 and results.q3[2] is not none else 'N/A' }},
+                Average GRE AW: {{ '%.2f'|format(results.q3[3]) if results.q3 and results.q3[3] is not none else 'N/A' }}
+            </p>
+        </div>
+
+        <div class="card">
+            <p class="question">4. What is the average GPA of American students in Fall 2025?</p>
+            <p class="answer" id="q4-answer">Answer: Average GPA American: {{ '%.2f'|format(results.q4[0]) if results.q4 and results.q4[0] is not none else 'N/A' }}</p>
+        </div>
+
+        <div class="card">
+            <p class="question">5. What percent of entries for Fall 2025 are Acceptances?</p>
+            <p class="answer" id="q5-answer">Answer: Acceptance percent: {{ '%.2f'|format(results.q5[0]) if results.q5 and results.q5[0] is not none else '0.00' }}%</p>
+        </div>
+        
+        <div class="card">
+            <p class="question">6. What is the average GPA of applicants who applied for Fall 2025 who are Acceptances?</p>
+            <p class="answer" id="q6-answer">Answer: Average GPA Acceptance: {{ '%.2f'|format(results.q6[0]) if results.q6 and results.q6[0] is not none else 'N/A' }}</p>
+        </div>
+
+        <div class="card">
+            <p class="question">7. How many entries are from applicants who applied to JHU for a masters degrees in Computer Science?</p>
+            <p class="answer" id="q7-answer">Answer: JHU Masters CS count: {{ results.q7[0] if results.q7 else 0 }}</p>
+        </div>
+
+        <div class="card">
+            <p class="question">8. How many entries from 2025 are acceptances from applicants who applied to Georgetown University for a PhD in Computer Science?</p>
+            <p class="answer" id="q8-answer">Answer: Georgetown PhD CS Acceptances (2025): {{ results.q8[0] if results.q8 else 0 }}</p>
+        </div>
+
+        <div class="card">
+            <p class="question">9. What are the top 3 universities with the most applications?</p>
+            <div class="answer">Answer: 
+                <ul id="q9-answer">
+                {% for uni, count in results.q9 %}
+                    <li>{{ uni }}: {{ count }} applications</li>
+                {% else %}
+                    <li>No data available.</li>
+                {% endfor %}
+                </ul>
+            </div>
+        </div>
+
+        <div class="card">
+            <p class="question">10. How does the average GPA differ between 'Accepted' and 'Rejected' applicants?</p>
+            <div class="answer">Answer: 
+                <ul id="q10-answer">
+                {% for status, gpa in results.q10 %}
+                    <li>{{ status }}: {{ '%.2f'|format(gpa) if gpa is not none else 'N/A' }}</li>
+                {% else %}
+                    <li>No data available.</li>
+                {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const pullDataBtn = document.getElementById('pullDataBtn');
+            const updateAnalysisBtn = document.getElementById('updateAnalysisBtn');
+            const statusMessage = document.getElementById('statusMessage');
+            let isPipelineRunning = false;
+
+            // --- Function to update the page content with new data ---
+            function updatePageContent(data) {
+                document.getElementById('q1-answer').textContent = `Answer: Applicant count: ${data.q1 ? data.q1[0] : 0}`;
+                document.getElementById('q2-answer').textContent = `Answer: Percent International: ${data.q2 && data.q2[0] !== null ? parseFloat(data.q2[0]).toFixed(2) : '0.00'}%`;
+                
+                const q3_gpa = data.q3 && data.q3[0] !== null ? data.q3[0].toFixed(2) : 'N/A';
+                const q3_gre = data.q3 && data.q3[1] !== null ? data.q3[1].toFixed(2) : 'N/A';
+                const q3_gre_v = data.q3 && data.q3[2] !== null ? data.q3[2].toFixed(2) : 'N/A';
+                const q3_gre_aw = data.q3 && data.q3[3] !== null ? data.q3[3].toFixed(2) : 'N/A';
+                document.getElementById('q3-answer').innerHTML = `Answer: \n                Average GPA: ${q3_gpa},\n                Average GRE: ${q3_gre},\n                Average GRE V: ${q3_gre_v},\n                Average GRE AW: ${q3_gre_aw}\n            `;
+
+                document.getElementById('q4-answer').textContent = `Answer: Average GPA American: ${data.q4 && data.q4[0] !== null ? data.q4[0].toFixed(2) : 'N/A'}`;
+                document.getElementById('q5-answer').textContent = `Answer: Acceptance percent: ${data.q5 && data.q5[0] !== null ? parseFloat(data.q5[0]).toFixed(2) : '0.00'}%`;
+                document.getElementById('q6-answer').textContent = `Answer: Average GPA Acceptance: ${data.q6 && data.q6[0] !== null ? data.q6[0].toFixed(2) : 'N/A'}`;
+                document.getElementById('q7-answer').textContent = `Answer: JHU Masters CS count: ${data.q7 ? data.q7[0] : 0}`;
+                document.getElementById('q8-answer').textContent = `Answer: Georgetown PhD CS Acceptances (2025): ${data.q8 ? data.q8[0] : 0}`;
+
+                const q9List = document.getElementById('q9-answer');
+                q9List.innerHTML = '';
+                if (data.q9 && data.q9.length > 0) {
+                    data.q9.forEach(item => {
+                        const li = document.createElement('li');
+                        li.textContent = `${item[0]}: ${item[1]} applications`;
+                        q9List.appendChild(li);
+                    });
+                } else {
+                    q9List.innerHTML = '<li>No data available.</li>';
+                }
+
+                const q10List = document.getElementById('q10-answer');
+                q10List.innerHTML = '';
+                if (data.q10 && data.q10.length > 0) {
+                    data.q10.forEach(item => {
+                        const li = document.createElement('li');
+                        const gpa = item[1] !== null ? item[1].toFixed(2) : 'N/A';
+                        li.textContent = `${item[0]}: ${gpa}`;
+                        q10List.appendChild(li);
+                    });
+                } else {
+                    q10List.innerHTML = '<li>No data available.</li>';
+                }
+            }
+
+            async function checkStatus() {
+                try {
+                    const response = await fetch('/status');
+                    const data = await response.json();
+                    isPipelineRunning = data.PIPELINE_IN_PROGRESS;
+                    pullDataBtn.disabled = isPipelineRunning;
+                    if (isPipelineRunning) {
+                         pullDataBtn.classList.add('disabled');
+                         pullDataBtn.title = "Cannot start a new pull while one is in progress.";
+                    } else {
+                        pullDataBtn.classList.remove('disabled');
+                        pullDataBtn.title = "Scrape the latest entries from GradCafe and add them to the database. This process can take several minutes.";
+                    }
+                } catch (error) {
+                    console.error('Error checking status:', error);
+                }
+            }
+            
+            setInterval(checkStatus, 5000);
+            checkStatus();
+
+            pullDataBtn.addEventListener('click', async () => {
+                statusMessage.textContent = 'Initiating data pipeline... This may take several minutes.';
+                statusMessage.className = 'message-info';
+                pullDataBtn.disabled = true;
+                pullDataBtn.classList.add('disabled');
+                try {
+                    const response = await fetch('/pull-data', { method: 'POST' });
+                    const data = await response.json();
+                    if (response.ok) {
+                        statusMessage.textContent = data.message + ' Click "Update Analysis" to see new results.';
+                    } else {
+                        statusMessage.textContent = `Error: ${data.message}`;
+                        statusMessage.className = 'message-error';
+                    }
+                } catch (error) {
+                    statusMessage.textContent = 'Failed to start data pipeline process.';
+                    statusMessage.className = 'message-error';
+                } finally {
+                    checkStatus();
+                }
+            });
+
+            updateAnalysisBtn.addEventListener('click', async () => {
+                statusMessage.textContent = 'Refreshing analysis...';
+                statusMessage.className = 'message-info';
+                try {
+                    const response = await fetch('/update-analysis');
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    const data = await response.json();
+                    updatePageContent(data);
+                    statusMessage.textContent = 'Analysis updated successfully.';
+                    setTimeout(() => statusMessage.textContent = '', 3000);
+                } catch (error) {
+                    console.error('Error updating analysis:', error);
+                    statusMessage.textContent = 'Failed to update analysis.';
+                    statusMessage.className = 'message-error';
+                }
+            });
+        });
+    </script>
+</body>
+</html>

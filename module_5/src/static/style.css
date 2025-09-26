@@ -1,0 +1,100 @@
+/* General Body Styling */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background-color: #f0f2f5;
+    color: #212529;
+    margin: 0 auto;
+    padding: 2em;
+    max-width: 900px;
+}
+
+/* Header Styling */
+header {
+    /* CHANGED: Re-added flexbox to position the title and buttons */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1em;
+    padding-bottom: 1em;
+    border-bottom: 1px solid #dee2e6;
+}
+
+header h1 {
+    font-size: 1.8em;
+    font-weight: 500;
+    color: #343a40;
+    margin: 0;
+    border-bottom: none; /* Border is now on the parent header */
+    padding-bottom: 0;
+}
+
+/* --- NEW SECTION: Button Styles --- */
+.buttons button {
+    padding: 8px 15px;
+    border: 1px solid #007bff;
+    background-color: #007bff;
+    color: white;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    margin-left: 10px;
+    transition: background-color 0.2s;
+}
+
+.buttons button:hover {
+    background-color: #0056b3;
+}
+
+/* Style for when the button is disabled via JavaScript */
+.buttons button.disabled {
+    background-color: #6c757d;
+    border-color: #6c757d;
+    cursor: not-allowed;
+}
+
+/* The status message can remain hidden until the JS adds text to it */
+#statusMessage {
+    display: none;
+}
+
+/* Main "Analysis" Title */
+main h2 {
+    font-size: 1.4em;
+    font-weight: 500;
+    margin-bottom: 1.5em;
+    color: #495057;
+}
+
+/* Card Styling */
+.card {
+    background-color: #ffffff;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 1.5em;
+    margin-bottom: 1.5em;
+}
+
+/* ... (rest of the card, question, and answer styles remain the same) ... */
+.question {
+    font-weight: normal;
+    color: #343a40;
+    margin-top: 0;
+    margin-bottom: 0.5em;
+}
+
+.answer {
+    color: #6c757d;
+    margin-bottom: 0;
+    padding-left: 1em;
+}
+
+.answer ul {
+    list-style-type: none;
+    padding-left: 0;
+    margin-top: 5px;
+    margin-bottom: 0;
+}
+
+.answer li {
+    padding: 2px 0;
+}
