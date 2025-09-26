@@ -21,7 +21,7 @@ Follow these steps to get the project running locally.
 1.  **Clone the Repository**
     ```bash
     git clone git@github.com:bparsha1/jhu_software_concepts.git
-    cd jhu_software_concepts/module_3
+    cd jhu_software_concepts/module_5
     ```
 
 2.  **Set Up a Virtual Environment** (Recommended)
